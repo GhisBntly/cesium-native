@@ -1222,3 +1222,100 @@ TEST_CASE("Test the tileset content manager's post processing for gltf") {
     pManager->unloadTileContent(tile);
   }
 }
+
+TEST_CASE("Test GLTF tune state machine") {
+  Cesium3DTilesContent::registerAllTileContentTypes();
+
+  // create mock tileset externals
+  auto pMockedAssetAccessor = std::make_shared<SimpleAssetAccessor>(
+      std::map<std::string, std::shared_ptr<SimpleAssetRequest>>{});
+  auto pMockedPrepareRendererResources =
+      std::make_shared<SimplePrepareRendererResource>();
+  CesiumAsync::AsyncSystem asyncSystem{std::make_shared<SimpleTaskProcessor>()};
+  auto pMockedCreditSystem = std::make_shared<CreditSystem>();
+
+  TilesetExternals externals{
+      pMockedAssetAccessor,
+      pMockedPrepareRendererResources,
+      asyncSystem,
+      pMockedCreditSystem};
+
+  class SimpleGltfTuner: public GltfTuner
+  {
+  public:
+    int tuneCallCount = 0;
+    CesiumGltf::Model Tune(const CesiumGltf::Model& model) override {
+      ++tuneCallCount;
+      return model;
+    }
+  };
+  auto gltfTuner = std::make_shared<SimpleGltfTuner>();
+  externals.gltfTuner = gltfTuner;
+  
+  auto pMockedLoader = std::make_unique<SimpleTilesetContentLoader>();
+  pMockedLoader->mockLoadTileContent = {
+      CesiumGltf::Model(),
+      CesiumGeometry::Axis::Y,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      nullptr,
+      {},
+      TileLoadResultState::Success};
+
+  // create tile
+  auto pRootTile = std::make_unique<Tile>(pMockedLoader.get());
+
+  // create manager
+  TilesetOptions options{};
+  options.contentOptions.generateMissingNormalsSmooth = true;
+
+  Tile::LoadedLinkedList loadedTiles;
+  IntrusivePointer<TilesetContentManager> pManager =
+      new TilesetContentManager{
+          externals,
+          options,
+          RasterOverlayCollection{loadedTiles, externals},
+          {},
+          std::move(pMockedLoader),
+          std::move(pRootTile)};
+
+  // test manager loading
+  Tile& tile = *pManager->getRootTile();
+  pManager->loadTileContent(tile, options);
+  pManager->waitUntilIdle();
+  pManager->updateTileContent(tile, options);
+  CHECK(tile.getState() == TileLoadState::Done);
+  CHECK(tile.getContent().isRenderContent());
+
+  // After the tile is loaded, tuning should be needed.
+  CHECK(pManager->tileNeedsWorkerThreadLoading(tile));
+  CHECK(!pManager->tileNeedsMainThreadLoading(tile));
+  CHECK(gltfTuner->tuneCallCount == 0);
+  CHECK(pMockedPrepareRendererResources->totalAllocation == 1);
+  // Start worker-thread phase of tuning.
+  pManager->loadTileContent(tile, options);
+  // Unloading should be refused while worker-thread is running.
+  CHECK(!pManager->unloadTileContent(tile));
+  // Wait completion of worker-thread phase.
+  pManager->waitUntilIdle();
+  CHECK(!pManager->tileNeedsWorkerThreadLoading(tile));
+  CHECK(pManager->tileNeedsMainThreadLoading(tile));
+  CHECK(gltfTuner->tuneCallCount == 1);
+  // The temporary renderer resource should have been created.
+  CHECK(pMockedPrepareRendererResources->totalAllocation == 2);
+
+  SECTION("Perform main-thread phase of tuning") {
+    pManager->finishLoading(tile, options);
+    CHECK(!pManager->tileNeedsWorkerThreadLoading(tile));
+    CHECK(!pManager->tileNeedsMainThreadLoading(tile));
+    // The temporary renderer resource should have been freed.
+    CHECK(gltfTuner->tuneCallCount == 1);
+    CHECK(pMockedPrepareRendererResources->totalAllocation == 1);
+  }
+  
+  SECTION("Unload tile before main-thread phase of tuning") {
+    CHECK(pManager->unloadTileContent(tile));
+    CHECK(pMockedPrepareRendererResources->totalAllocation == 0);
+  }
+}

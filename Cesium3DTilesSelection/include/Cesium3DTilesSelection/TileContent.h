@@ -192,6 +192,29 @@ public:
    */
   void setLodTransitionFadePercentage(float percentage) noexcept;
 
+  //! The state of the tuning process of the glTF model.
+  //! See class GltfTuner.
+  enum class TuneState
+  {
+    //! No tuning is in progress.
+    Idle,
+    //! Worker-thread phase is in progress.
+    WorkerRunning,
+    //! Worker-thread phase is complete,
+    //! and main-thread phase is not done yet.
+    WorkerDone,
+  };
+  //! Current state of the glTF model tuning.
+  TuneState tuneState = TuneState::Idle;
+  //! The version at which the model has been tuned last.
+  int tuneVersion = -1;
+  //! Temporary model used during tuning.
+  //! When tuning is done, it will be used as the actual model.
+  CesiumGltf::Model tuneModel;
+  //! Temporary render resources used during tuning.
+  //! When tuning is done, it will be used as the actual render resources.
+  void* pTuneRenderResources = nullptr;
+
 private:
   CesiumGltf::Model _model;
   void* _pRenderResources;

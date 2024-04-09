@@ -852,7 +852,47 @@ void TilesetContentManager::loadTileContent(
     Tile& tile,
     const TilesetOptions& tilesetOptions) {
   CESIUM_TRACE("TilesetContentManager::loadTileContent");
-
+  
+  // Test if worker-thread phase of glTF tuning should be started.
+  if (_externals.gltfTuner && tile.getState() == TileLoadState::Done) {
+    auto* renderContent = tile.getContent().getRenderContent();
+    if (renderContent &&
+      renderContent->tuneState == TileRenderContent::TuneState::Idle &&
+      renderContent->tuneVersion < _externals.gltfTuner->currentVersion) {
+      renderContent->tuneState = TileRenderContent::TuneState::WorkerRunning;
+      renderContent->tuneVersion = _externals.gltfTuner->currentVersion;
+      _externals.asyncSystem.runInWorkerThread(
+        [gltfTuner = _externals.gltfTuner,
+        pPrepareRendererResources = _externals.pPrepareRendererResources,
+        asyncSystem = _externals.asyncSystem,
+        &tile,
+        rendererOptions = tilesetOptions.rendererOptions] {
+          const auto model = gltfTuner->Tune(tile.getContent().getRenderContent()->getModel());
+          TileLoadResult tileLoadResult;
+          tileLoadResult.contentKind = std::move(model);
+          tileLoadResult.glTFUpAxis = [&] {
+              const auto it = model.extras.find("gltfUpAxis");
+              if (it == model.extras.end()) {
+                assert(false);
+                return CesiumGeometry::Axis::Y;
+              }
+              return static_cast<CesiumGeometry::Axis>(it->second.getSafeNumberOrDefault(1));
+            }();
+          tileLoadResult.state = TileLoadResultState::Success;
+          return pPrepareRendererResources->prepareInLoadThread(
+            asyncSystem,
+            std::move(tileLoadResult),
+            tile.getTransform(),
+            rendererOptions);
+        })
+      .thenInMainThread([&tile](TileLoadResultAndRenderResources&& pair) {
+          tile.getContent().getRenderContent()->tuneState = TileRenderContent::TuneState::WorkerDone;
+          tile.getContent().getRenderContent()->tuneModel = std::move(std::get<CesiumGltf::Model>(pair.result.contentKind));
+          tile.getContent().getRenderContent()->pTuneRenderResources = pair.pRenderResources;
+        });
+      return;
+    }
+  }
   if (tile.getState() == TileLoadState::Unloading) {
     // We can't load a tile that is unloading; it has to finish unloading first.
     return;
@@ -1018,6 +1058,25 @@ void TilesetContentManager::updateTileContent(
 
 bool TilesetContentManager::unloadTileContent(Tile& tile) {
   TileLoadState state = tile.getState();
+  // Test if a glTF tuning is in progress.
+  if (_externals.gltfTuner && state == TileLoadState::Done) {
+    auto* renderContent = tile.getContent().getRenderContent();
+    if (renderContent) {
+      switch (renderContent->tuneState) {
+      case TileRenderContent::TuneState::WorkerRunning:
+        // Worker thread is running, we cannot unload yet.
+        return false;
+      case TileRenderContent::TuneState::WorkerDone:
+        // Free temporary render resources.
+        assert(renderContent->pTuneRenderResources);
+        _externals.pPrepareRendererResources->free(tile, nullptr, renderContent->pTuneRenderResources);
+        renderContent->pTuneRenderResources = nullptr;
+        break;
+      default:
+        break;
+      }
+    }
+  }
   if (state == TileLoadState::Unloaded) {
     return true;
   }
@@ -1168,6 +1227,14 @@ int64_t TilesetContentManager::getTotalDataUsed() const noexcept {
 bool TilesetContentManager::tileNeedsWorkerThreadLoading(
     const Tile& tile) const noexcept {
   auto state = tile.getState();
+  // Test if worker-thread phase of glTF tuning should be started.
+  if (_externals.gltfTuner && state == TileLoadState::Done) {
+    const auto* renderContent = tile.getContent().getRenderContent();
+    if (renderContent &&
+      renderContent->tuneState == TileRenderContent::TuneState::Idle &&
+      renderContent->tuneVersion < _externals.gltfTuner->currentVersion)
+      return true;
+  }
   return state == TileLoadState::Unloaded ||
          state == TileLoadState::FailedTemporarily ||
          anyRasterOverlaysNeedLoading(tile);
@@ -1175,6 +1242,13 @@ bool TilesetContentManager::tileNeedsWorkerThreadLoading(
 
 bool TilesetContentManager::tileNeedsMainThreadLoading(
     const Tile& tile) const noexcept {
+  // Test if main-thread phase of glTF tuning should be performed.
+  if (_externals.gltfTuner && tile.getState() == TileLoadState::Done) {
+    const auto* renderContent = tile.getContent().getRenderContent();
+    if (renderContent &&
+      renderContent->tuneState == TileRenderContent::TuneState::WorkerDone)
+      return true;
+  }
   return tile.getState() == TileLoadState::ContentLoaded &&
          tile.isRenderContent();
 }
@@ -1182,6 +1256,20 @@ bool TilesetContentManager::tileNeedsMainThreadLoading(
 void TilesetContentManager::finishLoading(
     Tile& tile,
     const TilesetOptions& tilesetOptions) {
+  // Test if main-thread phase of glTF tuning should be performed.
+  if (_externals.gltfTuner && tile.getState() == TileLoadState::Done) {
+    auto* renderContent = tile.getContent().getRenderContent();
+    if (renderContent &&
+      renderContent->tuneState == TileRenderContent::TuneState::WorkerDone) {
+      assert(renderContent->pTuneRenderResources);
+      renderContent->tuneState = TileRenderContent::TuneState::Idle;
+      _externals.pPrepareRendererResources->free(tile, nullptr, renderContent->getRenderResources());
+      renderContent->setModel(std::move(renderContent->tuneModel));
+      renderContent->setRenderResources(_externals.pPrepareRendererResources->prepareInMainThread(tile, renderContent->pTuneRenderResources));
+      renderContent->pTuneRenderResources = nullptr;
+      return;
+    }
+  }
   assert(tile.getState() == TileLoadState::ContentLoaded);
 
   // Run the main thread part of loading.

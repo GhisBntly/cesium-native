@@ -20,6 +20,25 @@ class CreditSystem;
 namespace Cesium3DTilesSelection {
 class IPrepareRendererResources;
 
+//! Abstract class that allows tuning a glTF model.
+//! "Tuning" means reorganizing the primitives, eg. merging or splitting them.
+//! Merging primitives can lead to improved rendering performance.
+//! Splitting primitives allows to assign different materials to parts that were initially in the same primitive.
+//! Tuning is done in 2 phases: first phase in worker thread, then second phase in main thread.
+//! Tuning can occur several times during the lifetime of the model, depending on current needs.
+//! For example, if the user wants to assign a specific material on some part of the model,
+//! we can trigger a new tuning process.
+//! Hence the use of a "tune version" which allows to know if the mesh is up-to-date, or must be re-processed.
+class GltfTuner
+{
+public:
+	//! The current version of the tuner, which should be incremented by client code whenever
+	//! models needs to be re-tuned.
+	int currentVersion = 0;
+	virtual ~GltfTuner() = default;
+	virtual CesiumGltf::Model Tune(const CesiumGltf::Model& model) = 0;
+};
+
 /**
  * @brief External interfaces used by a {@link Tileset}.
  *
@@ -69,6 +88,8 @@ public:
    */
   std::shared_ptr<TileOcclusionRendererProxyPool> pTileOcclusionProxyPool =
       nullptr;
+
+  std::shared_ptr<GltfTuner> gltfTuner;
 };
 
 } // namespace Cesium3DTilesSelection
