@@ -1069,7 +1069,7 @@ bool TilesetContentManager::unloadTileContent(Tile& tile) {
       case TileRenderContent::TuneState::WorkerDone:
         // Free temporary render resources.
         assert(renderContent->pTuneRenderResources);
-        _externals.pPrepareRendererResources->free(tile, nullptr, renderContent->pTuneRenderResources);
+        _externals.pPrepareRendererResources->free(tile, renderContent->pTuneRenderResources, nullptr);
         renderContent->pTuneRenderResources = nullptr;
         break;
       default:
