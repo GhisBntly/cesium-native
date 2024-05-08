@@ -885,7 +885,10 @@ void TilesetContentManager::loadTileContent(
             tile.getTransform(),
             rendererOptions);
         })
-      .thenInMainThread([&tile](TileLoadResultAndRenderResources&& pair) {
+      .thenInMainThread([&tile,
+        // Keep the manager alive while the tuning is in progress.
+        thiz = CesiumUtility::IntrusivePointer<TilesetContentManager>(this)]
+        (TileLoadResultAndRenderResources&& pair) {
           tile.getContent().getRenderContent()->tuneState = TileRenderContent::TuneState::WorkerDone;
           tile.getContent().getRenderContent()->tuneModel = std::move(std::get<CesiumGltf::Model>(pair.result.contentKind));
           tile.getContent().getRenderContent()->pTuneRenderResources = pair.pRenderResources;
