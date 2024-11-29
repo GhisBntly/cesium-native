@@ -893,7 +893,7 @@ void TilesetContentManager::loadTileContent(
           return CesiumGltfReader::GltfReader::resolveExternalData(
               asyncSystem,
               "" /*baseUrl*/,
-              {} /*requestHeaders*/,
+              gltfTuner->GetHeadersForExternalData(),
               pAssetAccessor,
               gltfOptions,
               std::move(gltfResult));

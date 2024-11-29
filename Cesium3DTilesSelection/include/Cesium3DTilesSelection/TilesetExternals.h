@@ -6,6 +6,7 @@
 #include <rapidjson/fwd.h>
 
 #include <CesiumAsync/AsyncSystem.h>
+#include <CesiumAsync/HttpHeaders.h>
 
 #include <memory>
 
@@ -39,6 +40,10 @@ public:
 	virtual ~GltfTuner() = default;
 	virtual CesiumGltf::Model Tune(const CesiumGltf::Model& model) = 0;
 	virtual void ParseTilesetJson(const rapidjson::Document& tilesetJson) = 0;
+  //! The tuning may require some additional external data such as textures, typically in case of material
+  //! customizations. In such case, we may need to use custom headers (holding an iTwin access token for
+  //! example...)
+  virtual CesiumAsync::HttpHeaders GetHeadersForExternalData() const { return {}; }
 };
 
 /**
