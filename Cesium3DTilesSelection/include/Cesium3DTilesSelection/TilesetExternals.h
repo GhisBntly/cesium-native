@@ -8,6 +8,8 @@
 #include <CesiumAsync/AsyncSystem.h>
 #include <CesiumAsync/HttpHeaders.h>
 
+#include <glm/fwd.hpp>
+
 #include <memory>
 
 namespace CesiumAsync {
@@ -38,7 +40,7 @@ public:
 	//! models needs to be re-tuned.
 	int currentVersion = 0;
 	virtual ~GltfTuner() = default;
-	virtual CesiumGltf::Model Tune(const CesiumGltf::Model& model) = 0;
+	virtual CesiumGltf::Model Tune(const CesiumGltf::Model& model, const glm::dmat4& tileTransform) = 0;
 	virtual void ParseTilesetJson(const rapidjson::Document& tilesetJson) = 0;
   //! The tuning may require some additional external data such as textures, typically in case of material
   //! customizations. In such case, we may need to use custom headers (holding an iTwin access token for

@@ -876,7 +876,7 @@ void TilesetContentManager::loadTileContent(
         pAssetAccessor = _externals.pAssetAccessor] {
         const auto& initialModel = tile.getContent().getRenderContent()->getModel();
         const size_t initialNbImages = initialModel.images.size();
-        const auto model = gltfTuner->Tune(initialModel);
+        const auto model = gltfTuner->Tune(initialModel, tile.getTransform());
 
         // Resolve external images added by the tuner, if any.
         CesiumGltfReader::GltfReaderResult gltfResult{std::move(model), {}, {}};
@@ -1053,7 +1053,7 @@ void TilesetContentManager::loadTileContent(
                     // custom materials not applied, because the model is not yet tuned).
                     result.tuneVersion = gltfTuner->currentVersion;
                     auto& model = std::get<CesiumGltf::Model>(result.contentKind);
-                    model = gltfTuner->Tune(model);
+                    model = gltfTuner->Tune(model, tileLoadInfo.tileTransform);
                   }
                   return postProcessContentInWorkerThread(
                       std::move(result),
