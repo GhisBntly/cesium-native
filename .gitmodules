@@ -6,10 +6,10 @@
 	url = https://github.com/uriparser/uriparser.git
 [submodule "extern/draco"]
 	path = extern/draco
-	url = https://github.com/google/draco.git
+	url = https://github.com/GhisBntly/draco.git
 [submodule "extern/earcut"]
 	path = extern/earcut
-	url = https://github.com/mapbox/earcut.hpp.git
+	url = https://github.com/GhisBntly/earcut.git
 [submodule "extern/Catch2"]
 	path = extern/Catch2
 	url = https://github.com/catchorg/Catch2.git
@@ -30,7 +30,7 @@
 	url = https://github.com/Tencent/rapidjson.git
 [submodule "extern/stb"]
 	path = extern/stb
-	url = https://github.com/nothings/stb.git
+	url = https://github.com/GhisBntly/stb.git
 [submodule "extern/cpp-httplib"]
 	path = extern/cpp-httplib
 	url = https://github.com/yhirose/cpp-httplib.git
@@ -48,7 +48,7 @@
 	url = https://github.com/google/s2geometry.git
 [submodule "extern/KTX-Software"]
 	path = extern/KTX-Software
-	url = https://github.com/CesiumGS/KTX-Software.git
+	url = https://github.com/GhisBntly/KTX-Software.git
 	branch = cesium-native
 [submodule "extern/libwebp"]
 	path = extern/libwebp
@@ -61,7 +61,7 @@
 	url = https://github.com/martinmoene/expected-lite.git
 [submodule "extern/libjpeg-turbo"]
 	path = extern/libjpeg-turbo
-	url = https://github.com/CesiumGS/libjpeg-turbo.git
+	url = https://github.com/GhisBntly/libjpeg-turbo.git
 [submodule "extern/zlib"]
 	path = extern/zlib
 	url = https://github.com/madler/zlib.git
