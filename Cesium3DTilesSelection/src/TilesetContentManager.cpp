@@ -1030,12 +1030,19 @@ void TilesetContentManager::loadTileContent(
   // Keep the manager alive while the load is in progress.
   CesiumUtility::IntrusivePointer<TilesetContentManager> thiz = this;
 
+  // Compute root translation (used in tuning, only for materials).
+  glm::dvec4 rootTranslation = glm::dvec4(0., 0., 0., 1.);
+  bool const isLoadingRootTile = (tile.getParent() == nullptr);
+  if (this->_pRootTile && !isLoadingRootTile) {
+      rootTranslation = glm::column(this->_pRootTile->getTransform(), 3);
+  }
   pLoader->loadTileContent(loadInput)
       .thenImmediately([tileLoadInfo = std::move(tileLoadInfo),
                         projections = std::move(projections),
                         rendererOptions = tilesetOptions.rendererOptions,
                         gltfTuner = _externals.gltfTuner,
-                        thiz](
+                        rootTranslation = std::move(rootTranslation),
+                        isLoadingRootTile](
                            TileLoadResult&& result) mutable {
         // the reason we run immediate continuation, instead of in the
         // worker thread, is that the loader may run the task in the main
@@ -1047,17 +1054,15 @@ void TilesetContentManager::loadTileContent(
         if (result.state == TileLoadResultState::Success) {
           if (std::holds_alternative<CesiumGltf::Model>(result.contentKind)) {
             auto asyncSystem = tileLoadInfo.asyncSystem;
-            glm::dvec4 rootTranslation = glm::dvec4(0., 0., 0., 1.);
-            if (thiz->_pRootTile)
-              rootTranslation =
-                  glm::column(thiz->_pRootTile->getTransform(), 3);
+            if (isLoadingRootTile) // update root translation now it has been loaded
+              rootTranslation = glm::column(tileLoadInfo.tileTransform, 3);
             return asyncSystem.runInWorkerThread(
                 [result = std::move(result),
                  projections = std::move(projections),
                  tileLoadInfo = std::move(tileLoadInfo),
                  rendererOptions,
                  gltfTuner,
-                 rootTranslation]() mutable {
+                 rootTranslation = std::move(rootTranslation)]() mutable {
                   if (gltfTuner) {
                     // Immediately tune the model, otherwise a tuning will be triggered after
                     // the renderer-side resources have been created, which is both a performance
