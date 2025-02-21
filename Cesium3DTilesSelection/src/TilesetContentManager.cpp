@@ -602,7 +602,8 @@ TilesetContentManager::TilesetContentManager(
           (tilesetOptions.credit && externals.pCreditSystem)
               ? std::optional<Credit>(externals.pCreditSystem->createCredit(
                     tilesetOptions.credit.value(),
-                    tilesetOptions.showCreditsOnScreen))
+                    tilesetOptions.showCreditsOnScreen,
+                    tilesetOptions.creditPriority.value_or(-1)))
               : std::nullopt),
       _tilesetCredits{},
       _overlayCollection{std::move(overlayCollection)},
@@ -631,7 +632,8 @@ TilesetContentManager::TilesetContentManager(
           (tilesetOptions.credit && externals.pCreditSystem)
               ? std::optional<Credit>(externals.pCreditSystem->createCredit(
                     tilesetOptions.credit.value(),
-                    tilesetOptions.showCreditsOnScreen))
+                    tilesetOptions.showCreditsOnScreen,
+                    tilesetOptions.creditPriority.value_or(-1)))
               : std::nullopt),
       _tilesetCredits{},
       _overlayCollection{std::move(overlayCollection)},
@@ -777,7 +779,8 @@ TilesetContentManager::TilesetContentManager(
           (tilesetOptions.credit && externals.pCreditSystem)
               ? std::optional<Credit>(externals.pCreditSystem->createCredit(
                     tilesetOptions.credit.value(),
-                    tilesetOptions.showCreditsOnScreen))
+                    tilesetOptions.showCreditsOnScreen,
+                    tilesetOptions.creditPriority.value_or(-1)))
               : std::nullopt),
       _tilesetCredits{},
       _overlayCollection{std::move(overlayCollection)},
