@@ -422,6 +422,8 @@ private:
       float deltaTime,
       ViewUpdateResult& result) const noexcept;
 
+  int getCurrentGltfTuningVersion() const;
+
   TilesetExternals _externals;
   CesiumAsync::AsyncSystem _asyncSystem;
 

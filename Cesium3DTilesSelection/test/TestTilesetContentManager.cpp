@@ -1299,7 +1299,7 @@ TEST_CASE("Test GLTF tune state machine") {
   CHECK(gltfTuner->tuneCallCount == 1);
   CHECK(pMockedPrepareRendererResources->totalAllocation == 1);
   // Increment tuner version, thus requiring a new tuning.
-  ++gltfTuner->currentVersion;
+  gltfTuner->retune();
   CHECK(pManager->tileNeedsWorkerThreadLoading(tile));
   // Start worker-thread phase of tuning.
   pManager->loadTileContent(tile, options);

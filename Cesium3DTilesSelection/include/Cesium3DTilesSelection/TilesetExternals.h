@@ -35,10 +35,14 @@ class IPrepareRendererResources;
 //! Hence the use of a "tune version" which allows to know if the mesh is up-to-date, or must be re-processed.
 class GltfTuner
 {
-public:
 	//! The current version of the tuner, which should be incremented by client code whenever
 	//! models needs to be re-tuned.
 	int currentVersion = 0;
+
+public:
+  int getCurrentVersion() const { return currentVersion; }
+  int retune() { return ++currentVersion; }
+
 	virtual ~GltfTuner() = default;
   virtual CesiumGltf::Model Tune(const CesiumGltf::Model& model,
     const glm::dmat4& tileTransform, const glm::dvec4& rootTranslation) = 0;

@@ -870,9 +870,9 @@ void TilesetContentManager::loadTileContent(
     auto* renderContent = tile.getContent().getRenderContent();
     if (renderContent &&
       renderContent->tuneState == TileRenderContent::TuneState::Idle &&
-      renderContent->tuneVersion < _externals.gltfTuner->currentVersion) {
+      renderContent->tuneVersion < _externals.gltfTuner->getCurrentVersion()) {
       renderContent->tuneState = TileRenderContent::TuneState::WorkerRunning;
-      renderContent->tuneVersion = _externals.gltfTuner->currentVersion;
+      renderContent->tuneVersion = _externals.gltfTuner->getCurrentVersion();
       glm::dvec4 rootTranslation = glm::dvec4(0., 0., 0., 1.);
       if (this->_pRootTile)
         rootTranslation = glm::column(this->_pRootTile->getTransform(), 3);
@@ -1072,7 +1072,7 @@ void TilesetContentManager::loadTileContent(
                     // issue (since rendered resources will be re-created for the tuned mode),
                     // and a cause of potential visual issues (the model may appear briefly with
                     // custom materials not applied, because the model is not yet tuned).
-                    result.tuneVersion = gltfTuner->currentVersion;
+                    result.tuneVersion = gltfTuner->getCurrentVersion();
                     auto& model = std::get<CesiumGltf::Model>(result.contentKind);
                     model = gltfTuner->Tune(
                         model,
@@ -1311,7 +1311,7 @@ bool TilesetContentManager::tileNeedsWorkerThreadLoading(
     const auto* renderContent = tile.getContent().getRenderContent();
     if (renderContent &&
       renderContent->tuneState == TileRenderContent::TuneState::Idle &&
-      renderContent->tuneVersion < _externals.gltfTuner->currentVersion)
+      renderContent->tuneVersion < _externals.gltfTuner->getCurrentVersion())
       return true;
   }
   return state == TileLoadState::Unloaded ||
