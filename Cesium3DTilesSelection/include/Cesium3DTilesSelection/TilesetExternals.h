@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Library.h"
-#include "TileOcclusionRendererProxy.h"
-#include "spdlog-cesium.h"
+#include <Cesium3DTilesSelection/Library.h>
+#include <Cesium3DTilesSelection/TileOcclusionRendererProxy.h>
+#include <Cesium3DTilesSelection/TilesetSharedAssetSystem.h>
+#include <Cesium3DTilesSelection/spdlog-cesium.h>
 #include <rapidjson/fwd.h>
-
 #include <CesiumAsync/AsyncSystem.h>
 #include <CesiumAsync/HttpHeaders.h>
 
@@ -76,7 +76,7 @@ public:
   CesiumAsync::AsyncSystem asyncSystem;
 
   /**
-   * @brief An external {@link CreditSystem} that can be used to manage credit
+   * @brief An external {@link CesiumUtility::CreditSystem} that can be used to manage credit
    * strings and track which which credits to show and remove from the screen
    * each frame.
    */
@@ -98,6 +98,13 @@ public:
    */
   std::shared_ptr<TileOcclusionRendererProxyPool> pTileOcclusionProxyPool =
       nullptr;
+
+  /**
+   * @brief The shared asset system used to facilitate sharing of common assets,
+   * such as images, between and within tilesets.
+   */
+  CesiumUtility::IntrusivePointer<TilesetSharedAssetSystem> pSharedAssetSystem =
+      TilesetSharedAssetSystem::getDefault();
 
   std::shared_ptr<GltfTuner> gltfTuner = nullptr;
 };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Library.h"
+#include <CesiumUtility/Library.h>
 
 #include <string>
 #include <unordered_map>
@@ -29,7 +29,7 @@ private:
   size_t id;
   int32_t priority = -1;
 
-  Credit(size_t id_, int32_t prio = -1) noexcept { id = id_; priority = prio; }
+  Credit(size_t id_, int32_t prio = -1) noexcept : id(id_), priority(prio) {}
 
   friend class CreditSystem;
 };
@@ -47,10 +47,7 @@ public:
    * @return If this string already exists, returns a Credit handle to the
    * existing entry. Otherwise returns a Credit handle to a new entry.
    */
-  Credit createCredit(
-      std::string&& html,
-      bool showOnScreen = false,
-      int32_t priority = -1);
+  Credit createCredit(std::string&& html, bool showOnScreen = false, int32_t priority = -1);
 
   /**
    * @brief Inserts a credit string
@@ -58,10 +55,7 @@ public:
    * @return If this string already exists, returns a Credit handle to the
    * existing entry. Otherwise returns a Credit handle to a new entry.
    */
-  Credit createCredit(
-      const std::string& html,
-      bool showOnScreen = false,
-      int32_t priority = -1);
+  Credit createCredit(const std::string& html, bool showOnScreen = false, int32_t priority = -1);
 
   /**
    * @brief Gets whether or not the credit should be shown on screen.
