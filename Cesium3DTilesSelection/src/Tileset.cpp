@@ -882,7 +882,8 @@ Tileset::TraversalDetails Tileset::_visitTileIfNeeded(
       traversalDetails = Tileset::createTraversalDetailsForSingleTile(
           frameState,
           tile,
-          lastFrameSelectionState);
+          lastFrameSelectionState,
+          getCurrentGltfTuningVersion());
     } else if (this->_options.preloadSiblings) {
       // Preload this culled sibling as requested.
       addTileToLoadQueue(tile, TileLoadPriorityGroup::Preload, tilePriority);
@@ -931,7 +932,8 @@ Tileset::TraversalDetails Tileset::_renderLeaf(
   return Tileset::createTraversalDetailsForSingleTile(
       frameState,
       tile,
-      lastFrameSelectionState);
+      lastFrameSelectionState,
+      getCurrentGltfTuningVersion());
 }
 
 /**
@@ -946,7 +948,8 @@ Tileset::TraversalDetails Tileset::_renderLeaf(
 static bool shouldRenderThisTile(
     const Tile& tile,
     const TileSelectionState& lastFrameSelectionState,
-    int32_t lastFrameNumber) noexcept {
+    int32_t lastFrameNumber,
+    int minTuneVersionNeeded) noexcept {
   const TileSelectionState::Result originalResult =
       lastFrameSelectionState.getOriginalResult(lastFrameNumber);
   if (originalResult == TileSelectionState::Result::Rendered) {
@@ -959,7 +962,7 @@ static bool shouldRenderThisTile(
 
   // Tile::isRenderable is actually a pretty complex operation, so only do
   // it when absolutely necessary
-  if (tile.isRenderable()) {
+  if (tile.isRenderable(minTuneVersionNeeded)) {
     return true;
   }
   return false;
@@ -982,7 +985,12 @@ Tileset::TraversalDetails Tileset::_renderInnerTile(
   return Tileset::createTraversalDetailsForSingleTile(
       frameState,
       tile,
-      lastFrameSelectionState);
+      lastFrameSelectionState,
+      getCurrentGltfTuningVersion());
+}
+
+ int Tileset::getCurrentGltfTuningVersion() const {
+  return _externals.gltfTuner ? _externals.gltfTuner->getCurrentVersion() : -1;
 }
 
 bool Tileset::_loadAndRenderAdditiveRefinedTile(
@@ -1056,8 +1064,9 @@ bool Tileset::_kickDescendantsAndRenderTile(
   const bool wasRenderedLastFrame =
       lastFrameSelectionState.getResult(frameState.lastFrameNumber) ==
       TileSelectionState::Result::Rendered;
+  int const currentTuningVer = getCurrentGltfTuningVersion();
   const bool wasReallyRenderedLastFrame =
-      wasRenderedLastFrame && tile.isRenderable();
+      wasRenderedLastFrame && tile.isRenderable(currentTuningVer);
 
   if (!wasReallyRenderedLastFrame &&
       traversalDetails.notYetRenderableCount >
@@ -1086,11 +1095,11 @@ bool Tileset::_kickDescendantsAndRenderTile(
       addTileToLoadQueue(tile, TileLoadPriorityGroup::Normal, tilePriority);
     }
 
-    traversalDetails.notYetRenderableCount = tile.isRenderable() ? 0 : 1;
+    traversalDetails.notYetRenderableCount = tile.isRenderable(currentTuningVer) ? 0 : 1;
     queuedForLoad = true;
   }
 
-  bool isRenderable = tile.isRenderable();
+  bool isRenderable = tile.isRenderable(currentTuningVer);
   traversalDetails.allAreRenderable = isRenderable;
   traversalDetails.anyWereRenderedLastFrame =
       isRenderable && wasRenderedLastFrame;
@@ -1283,7 +1292,8 @@ Tileset::TraversalDetails Tileset::_visitTile(
     const bool renderThisTile = shouldRenderThisTile(
         tile,
         lastFrameSelectionState,
-        frameState.lastFrameNumber);
+        frameState.lastFrameNumber,
+        getCurrentGltfTuningVersion());
     if (renderThisTile) {
       // Only load this tile if it (not just an ancestor) meets the SSE.
       if (meetsSse && !ancestorMeetsSse) {
@@ -1544,10 +1554,11 @@ void Tileset::addTileToLoadQueue(
 Tileset::TraversalDetails Tileset::createTraversalDetailsForSingleTile(
     const FrameState& frameState,
     const Tile& tile,
-    const TileSelectionState& lastFrameSelectionState) {
+    const TileSelectionState& lastFrameSelectionState,
+    int minGltfTuningVersion) {
   TileSelectionState::Result lastFrameResult =
       lastFrameSelectionState.getResult(frameState.lastFrameNumber);
-  bool isRenderable = tile.isRenderable();
+  bool isRenderable = tile.isRenderable(minGltfTuningVersion);
   bool wasRenderedLastFrame =
       lastFrameResult == TileSelectionState::Result::Rendered ||
       (tile.getRefine() == TileRefine::Add &&

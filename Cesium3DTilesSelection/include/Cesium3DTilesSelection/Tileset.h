@@ -507,7 +507,8 @@ private:
   static TraversalDetails createTraversalDetailsForSingleTile(
       const FrameState& frameState,
       const Tile& tile,
-      const TileSelectionState& lastFrameSelectionState);
+      const TileSelectionState& lastFrameSelectionState,
+      int minGltfTuningVersion);
 
   Tileset(const Tileset& rhs) = delete;
   Tileset& operator=(const Tileset& rhs) = delete;

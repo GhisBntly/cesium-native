@@ -706,6 +706,7 @@ TEST_CASE("Render any tiles even when one of children can't be rendered for "
       std::make_shared<SimplePrepareRendererResource>(),
       AsyncSystem(std::make_shared<SimpleTaskProcessor>()),
       nullptr};
+  int const tunerVersion = 0; // <== no tuner, use initial version
 
   // create tileset and call updateView() to give it a chance to load
   Tileset tileset(tilesetExternals, "tileset.json");
@@ -743,15 +744,15 @@ TEST_CASE("Render any tiles even when one of children can't be rendered for "
   {
     ViewUpdateResult result = tileset.updateView({viewState});
 
-    REQUIRE(root->isRenderable());
+    REQUIRE(root->isRenderable(tunerVersion));
 
     // first child will have failed empty content, but other children
     const auto& children = root->getChildren();
     REQUIRE(children[0].getState() == TileLoadState::Failed);
-    REQUIRE(children[0].isRenderable());
+    REQUIRE(children[0].isRenderable(tunerVersion));
     for (const Tile& child : children.subspan(1)) {
       REQUIRE(child.getState() == TileLoadState::Done);
-      REQUIRE(child.isRenderable());
+      REQUIRE(child.isRenderable(tunerVersion));
     }
 
     REQUIRE(result.tilesToRenderThisFrame.size() == 5);
