@@ -36,8 +36,10 @@ class IPrepareRendererResources;
 class GltfTuner
 {
 	//! The current version of the tuner, which should be incremented by client code whenever
-	//! models needs to be re-tuned.
-	int currentVersion = 0;
+	//! models needs to be re-tuned. Note: initialize to 0 if you want the cesium meshes to be retuned
+  //! even before any rules have been set, which used to be the default. Although it can merge some
+  //! meshes that were not in the original glTF, it's probably not worth the performance cost.
+  int currentVersion = -1;
 
 public:
   int getCurrentVersion() const { return currentVersion; }

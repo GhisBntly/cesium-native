@@ -866,7 +866,8 @@ void TilesetContentManager::loadTileContent(
   CESIUM_TRACE("TilesetContentManager::loadTileContent");
   
   // Test if worker-thread phase of glTF tuning should be started.
-  if (_externals.gltfTuner && tile.getState() == TileLoadState::Done) {
+  if (_externals.gltfTuner && -1 != _externals.gltfTuner->getCurrentVersion()
+    && tile.getState() == TileLoadState::Done) {
     auto* renderContent = tile.getContent().getRenderContent();
     if (renderContent &&
       renderContent->tuneState == TileRenderContent::TuneState::Idle &&
@@ -1066,7 +1067,7 @@ void TilesetContentManager::loadTileContent(
                  rendererOptions,
                  gltfTuner,
                  rootTranslation = std::move(rootTranslation)]() mutable {
-                  if (gltfTuner) {
+                  if (gltfTuner && -1 != gltfTuner->getCurrentVersion()) {
                     // Immediately tune the model, otherwise a tuning will be triggered after
                     // the renderer-side resources have been created, which is both a performance
                     // issue (since rendered resources will be re-created for the tuned mode),
