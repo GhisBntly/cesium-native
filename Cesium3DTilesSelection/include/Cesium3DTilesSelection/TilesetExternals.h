@@ -10,6 +10,7 @@
 
 #include <glm/fwd.hpp>
 
+#include <atomic>
 #include <memory>
 
 namespace CesiumAsync {
@@ -39,15 +40,15 @@ class GltfTuner
 	//! models needs to be re-tuned. Note: initialize to 0 if you want the cesium meshes to be retuned
   //! even before any rules have been set, which used to be the default. Although it can merge some
   //! meshes that were not in the original glTF, it's probably not worth the performance cost.
-  int currentVersion = -1;
+  std::atomic_int currentVersion = -1;
 
 public:
   int getCurrentVersion() const { return currentVersion; }
   int retune() { return ++currentVersion; }
 
 	virtual ~GltfTuner() = default;
-  virtual CesiumGltf::Model Tune(const CesiumGltf::Model& model,
-    const glm::dmat4& tileTransform, const glm::dvec4& rootTranslation) = 0;
+  virtual bool Tune(const CesiumGltf::Model& model, const glm::dmat4& tileTransform,
+    const glm::dvec4& rootTranslation, CesiumGltf::Model& tunedModel, int& tunedVersion) = 0;
 	virtual void ParseTilesetJson(const rapidjson::Document& tilesetJson) = 0;
   //! The tuning may require some additional external data such as textures, typically in case of material
   //! customizations. In such case, we may need to use custom headers (holding an iTwin access token for
