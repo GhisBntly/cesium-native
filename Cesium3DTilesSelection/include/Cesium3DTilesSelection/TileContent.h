@@ -206,8 +206,6 @@ public:
   };
   //! Current state of the glTF model tuning.
   TuneState tuneState = TuneState::Idle;
-  //! The version at which the model has been tuned last.
-  int tuneVersion = -1;
   //! Temporary model used during tuning.
   //! When tuning is done, it will be used as the actual model.
   CesiumGltf::Model tuneModel;

@@ -871,7 +871,7 @@ void TilesetContentManager::loadTileContent(
     auto* renderContent = tile.getContent().getRenderContent();
     if (renderContent &&
       renderContent->tuneState == TileRenderContent::TuneState::Idle &&
-      renderContent->tuneVersion < _externals.gltfTuner->getCurrentVersion()) {
+      renderContent->getModel()._tuneVersion < _externals.gltfTuner->getCurrentVersion()) {
       renderContent->tuneState = TileRenderContent::TuneState::WorkerRunning;
       glm::dvec4 rootTranslation = glm::dvec4(0., 0., 0., 1.);
       if (this->_pRootTile)
@@ -887,12 +887,11 @@ void TilesetContentManager::loadTileContent(
         auto& initialModel = renderContent->getModel();
         const size_t initialNbImages = initialModel.images.size();
         CesiumGltf::Model tunedModel;
-        // should return true since we already tested tuneVersion < currentVersion above
+        // should return true since we already tested _tuneVersion < currentVersion above
         bool const wasTuned = gltfTuner->Tune(initialModel,
           tile.getTransform(),
           rootTranslation,
-          tunedModel,
-          renderContent->tuneVersion);
+          tunedModel);
 
         // Resolve external images added by the tuner, if any.
         CesiumGltfReader::GltfReaderResult gltfResult{
@@ -936,9 +935,6 @@ void TilesetContentManager::loadTileContent(
           }(*gltfResult.model);
           tileLoadResult.contentKind = std::move(*gltfResult.model);
           tileLoadResult.state = TileLoadResultState::Success;
-          // Copy tuneVersion: not technically useful, but for consistency.
-          // Note: renderContent already known as being non-null
-          tileLoadResult.tuneVersion = tile.getContent().getRenderContent()->tuneVersion;
           return pPrepareRendererResources->prepareInLoadThread(
             asyncSystem,
             std::move(tileLoadResult),
@@ -1087,8 +1083,7 @@ void TilesetContentManager::loadTileContent(
                       model,
                       tileLoadInfo.tileTransform,
                       rootTranslation,
-                      model,
-                      result.tuneVersion);
+                      model);
                   }
                   return postProcessContentInWorkerThread(
                       std::move(result),
@@ -1322,7 +1317,7 @@ bool TilesetContentManager::tileNeedsWorkerThreadLoading(
     const auto* renderContent = tile.getContent().getRenderContent();
     if (renderContent &&
       renderContent->tuneState == TileRenderContent::TuneState::Idle &&
-      renderContent->tuneVersion < _externals.gltfTuner->getCurrentVersion())
+      renderContent->getModel()._tuneVersion < _externals.gltfTuner->getCurrentVersion())
       return true;
   }
   return state == TileLoadState::Unloaded ||
@@ -1427,8 +1422,6 @@ void TilesetContentManager::setTileContent(
             std::move(result.rasterOverlayDetails),
             pWorkerRenderResources},
         std::move(result.contentKind));
-    if (auto* renderContent = tile.getContent().getRenderContent())
-      renderContent->tuneVersion = result.tuneVersion;
     if (result.tileInitializer) {
       result.tileInitializer(tile);
     }

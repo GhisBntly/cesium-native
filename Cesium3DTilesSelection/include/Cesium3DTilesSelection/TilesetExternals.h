@@ -48,7 +48,7 @@ public:
 
 	virtual ~GltfTuner() = default;
   virtual bool Tune(const CesiumGltf::Model& model, const glm::dmat4& tileTransform,
-    const glm::dvec4& rootTranslation, CesiumGltf::Model& tunedModel, int& tunedVersion) = 0;
+    const glm::dvec4& rootTranslation, CesiumGltf::Model& tunedModel) = 0;
 	virtual void ParseTilesetJson(const rapidjson::Document& tilesetJson) = 0;
   //! The tuning may require some additional external data such as textures, typically in case of material
   //! customizations. In such case, we may need to use custom headers (holding an iTwin access token for

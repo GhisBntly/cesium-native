@@ -192,7 +192,7 @@ bool Tile::isRenderable(int minTuneVersionNeeded) const noexcept {
       return false;
     auto* renderContent = getContent().getRenderContent();
     if (renderContent && -1 != minTuneVersionNeeded &&
-      minTuneVersionNeeded > renderContent->tuneVersion)
+      minTuneVersionNeeded > renderContent->getModel()._tuneVersion)
       return false;
     // An unconditionally-refined tile is never renderable... UNLESS it has no
     // children, in which case waiting longer will be futile.

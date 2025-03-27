@@ -11,6 +11,10 @@ namespace CesiumGltf {
 
 /** @copydoc ModelSpec */
 struct CESIUMGLTF_API Model : public ModelSpec {
+
+  //! When produced by the glTF tuner, identifies the model version
+  int _tuneVersion = -1;
+
   /**
    * @brief Merges another model into this one.
    *
