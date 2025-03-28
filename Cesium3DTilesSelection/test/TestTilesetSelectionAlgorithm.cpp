@@ -706,7 +706,7 @@ TEST_CASE("Render any tiles even when one of children can't be rendered for "
       std::make_shared<SimplePrepareRendererResource>(),
       AsyncSystem(std::make_shared<SimpleTaskProcessor>()),
       nullptr};
-  int const tunerVersion = 0; // <== no tuner, use initial version
+  int const tunerVersion = -1; // <== no tuner, use initial version
 
   // create tileset and call updateView() to give it a chance to load
   Tileset tileset(tilesetExternals, "tileset.json");

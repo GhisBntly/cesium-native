@@ -1244,12 +1244,18 @@ TEST_CASE("Test GLTF tune state machine") {
   {
   public:
     int tuneCallCount = 0;
-    CesiumGltf::Model Tune(
+    // retune() here forces initial tuning upon loading tiles, as was
+    // the default when these tests were written
+    SimpleGltfTuner() { retune(); }
+    bool Tune(
         const CesiumGltf::Model& model,
         const glm::dmat4& /*tileTransform*/,
-        const glm::dvec4& /*rootTranslation*/) override {
+        const glm::dvec4& /*rootTranslation*/,
+        CesiumGltf::Model& out_model) override {
       ++tuneCallCount;
-      return model;
+      out_model = model;
+      out_model._tuneVersion = getCurrentVersion();
+      return true;
     }
     void ParseTilesetJson(const rapidjson::Document&) override {}
   };
