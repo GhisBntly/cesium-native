@@ -1316,9 +1316,15 @@ bool TilesetContentManager::tileNeedsWorkerThreadLoading(
   if (_externals.gltfTuner && state == TileLoadState::Done) {
     const auto* renderContent = tile.getContent().getRenderContent();
     if (renderContent &&
-      renderContent->tuneState == TileRenderContent::TuneState::Idle &&
-      renderContent->getModel()._tuneVersion < _externals.gltfTuner->getCurrentVersion())
-      return true;
+        renderContent->tuneState == TileRenderContent::TuneState::Idle) {
+      // Need to account for tuneModel's version too in case finishLoading
+      // hasn't yet been called
+      int latestVersion = renderContent->tuneModel._tuneVersion;
+      if (-1 == latestVersion)
+        latestVersion = renderContent->getModel()._tuneVersion;
+      if (latestVersion < _externals.gltfTuner->getCurrentVersion())
+        return true;
+    }
   }
   return state == TileLoadState::Unloaded ||
          state == TileLoadState::FailedTemporarily ||
@@ -1350,6 +1356,8 @@ void TilesetContentManager::finishLoading(
       renderContent->tuneState = TileRenderContent::TuneState::Idle;
       _externals.pPrepareRendererResources->free(tile, nullptr, renderContent->getRenderResources());
       renderContent->setModel(std::move(renderContent->tuneModel));
+      // reset after move because tested in tileNeedsWorkerThreadLoading:
+      renderContent->tuneModel._tuneVersion = -1;
       renderContent->setRenderResources(_externals.pPrepareRendererResources->prepareInMainThread(tile, renderContent->pTuneRenderResources));
       renderContent->pTuneRenderResources = nullptr;
       return;
