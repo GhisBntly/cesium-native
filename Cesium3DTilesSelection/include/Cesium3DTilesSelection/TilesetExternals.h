@@ -37,12 +37,17 @@ class IPrepareRendererResources;
 class GltfTuner
 {
 	//! The current version of the tuner, which should be incremented by client code whenever
-	//! models needs to be re-tuned. Note: initialize to 0 if you want the cesium meshes to be retuned
-  //! even before any rules have been set, which used to be the default. Although it can merge some
-  //! meshes that were not in the original glTF, it's probably not worth the performance cost.
-  std::atomic_int currentVersion = -1;
+	//! models needs to be re-tuned.
+  //! @see initialVersion
+  std::atomic_int currentVersion = initialVersion;
 
 public:
+  //! Initialize currentVersion to 0 to have the cesium meshes be retuned even before any rules have been
+  //! set. Although it can merge some meshes that were not in the original glTF, is it worth the overhead?
+  //! Initialize to -1 instead to only tune meshes when material and/or 4D rules have been set.
+  //! Keeping 0 for the moment because of severe issues seen with 4D animation, until the problem has been
+  //! investigated. TODO_JDE: need to test whether material tuning is also affected?
+  static constexpr int initialVersion = 0;
   int getCurrentVersion() const { return currentVersion; }
   int retune() { return ++currentVersion; }
 
