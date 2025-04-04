@@ -10,6 +10,7 @@
 
 #include <glm/fwd.hpp>
 
+#include <atomic>
 #include <memory>
 
 namespace CesiumAsync {
@@ -35,13 +36,24 @@ class IPrepareRendererResources;
 //! Hence the use of a "tune version" which allows to know if the mesh is up-to-date, or must be re-processed.
 class GltfTuner
 {
-public:
 	//! The current version of the tuner, which should be incremented by client code whenever
 	//! models needs to be re-tuned.
-	int currentVersion = 0;
+  //! @see initialVersion
+  std::atomic_int currentVersion = initialVersion;
+
+public:
+  //! Initialize currentVersion to 0 to have the cesium meshes be retuned even before any rules have been
+  //! set. Although it can merge some meshes that were not in the original glTF, is it worth the overhead?
+  //! Initialize to -1 instead to only tune meshes when material and/or 4D rules have been set.
+  //! Keeping 0 for the moment because of severe issues seen with 4D animation, until the problem has been
+  //! investigated. TODO_JDE: need to test whether material tuning is also affected?
+  static constexpr int initialVersion = 0;
+  int getCurrentVersion() const { return currentVersion; }
+  int retune() { return ++currentVersion; }
+
 	virtual ~GltfTuner() = default;
-  virtual CesiumGltf::Model Tune(const CesiumGltf::Model& model,
-    const glm::dmat4& tileTransform, const glm::dvec4& rootTranslation) = 0;
+  virtual bool Tune(const CesiumGltf::Model& model, const glm::dmat4& tileTransform,
+    const glm::dvec4& rootTranslation, CesiumGltf::Model& tunedModel) = 0;
 	virtual void ParseTilesetJson(const rapidjson::Document& tilesetJson) = 0;
   //! The tuning may require some additional external data such as textures, typically in case of material
   //! customizations. In such case, we may need to use custom headers (holding an iTwin access token for

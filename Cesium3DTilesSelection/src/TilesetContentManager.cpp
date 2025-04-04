@@ -996,13 +996,13 @@ void TilesetContentManager::loadTileContent(
   CESIUM_TRACE("TilesetContentManager::loadTileContent");
   
   // Test if worker-thread phase of glTF tuning should be started.
-  if (_externals.gltfTuner && tile.getState() == TileLoadState::Done) {
+  if (_externals.gltfTuner && -1 != _externals.gltfTuner->getCurrentVersion()
+    && tile.getState() == TileLoadState::Done) {
     auto* renderContent = tile.getContent().getRenderContent();
     if (renderContent &&
       renderContent->tuneState == TileRenderContent::TuneState::Idle &&
-      renderContent->tuneVersion < _externals.gltfTuner->currentVersion) {
+      renderContent->getModel()._tuneVersion < _externals.gltfTuner->getCurrentVersion()) {
       renderContent->tuneState = TileRenderContent::TuneState::WorkerRunning;
-      renderContent->tuneVersion = _externals.gltfTuner->currentVersion;
       glm::dvec4 rootTranslation = glm::dvec4(0., 0., 0., 1.);
       if (this->_pRootTile)
         rootTranslation = glm::column(this->_pRootTile->getTransform(), 3);
@@ -1013,14 +1013,20 @@ void TilesetContentManager::loadTileContent(
         contentOptions = tilesetOptions.contentOptions,
         pAssetAccessor = _externals.pAssetAccessor,
         rootTranslation] {
-        const auto& initialModel = tile.getContent().getRenderContent()->getModel();
+        auto* renderContent = tile.getContent().getRenderContent();//already known as being non-null
+        auto& initialModel = renderContent->getModel();
         const size_t initialNbImages = initialModel.images.size();
-        const auto model = gltfTuner->Tune(initialModel,
-          tile.getTransform(), rootTranslation);
+        CesiumGltf::Model tunedModel;
+        // should return true since we already tested _tuneVersion < currentVersion above
+        bool const wasTuned = gltfTuner->Tune(initialModel,
+          tile.getTransform(),
+          rootTranslation,
+          tunedModel);
 
         // Resolve external images added by the tuner, if any.
-        CesiumGltfReader::GltfReaderResult gltfResult{std::move(model), {}, {}};
-        if (model.images.size() > initialNbImages) {
+        CesiumGltfReader::GltfReaderResult gltfResult{
+          std::move(wasTuned ? tunedModel : initialModel), {}, {}};
+        if (gltfResult.model->images.size() > initialNbImages) {
           CesiumGltfReader::GltfReaderOptions gltfOptions;
           gltfOptions.ktx2TranscodeTargets =
               contentOptions.ktx2TranscodeTargets;
@@ -1201,18 +1207,18 @@ void TilesetContentManager::loadTileContent(
                  rendererOptions,
                  gltfTuner,
                  rootTranslation = std::move(rootTranslation)]() mutable {
-                  if (gltfTuner) {
+                  if (gltfTuner && -1 != gltfTuner->getCurrentVersion()) {
                     // Immediately tune the model, otherwise a tuning will be triggered after
                     // the renderer-side resources have been created, which is both a performance
                     // issue (since rendered resources will be re-created for the tuned mode),
                     // and a cause of potential visual issues (the model may appear briefly with
                     // custom materials not applied, because the model is not yet tuned).
-                    result.tuneVersion = gltfTuner->currentVersion;
                     auto& model = std::get<CesiumGltf::Model>(result.contentKind);
-                    model = gltfTuner->Tune(
-                        model,
-                        tileLoadInfo.tileTransform,
-                        rootTranslation);
+                    gltfTuner->Tune(
+                      model,
+                      tileLoadInfo.tileTransform,
+                      rootTranslation,
+                      model);
                   }
                   return postProcessContentInWorkerThread(
                       std::move(result),
@@ -1495,9 +1501,15 @@ bool TilesetContentManager::tileNeedsWorkerThreadLoading(
   if (_externals.gltfTuner && state == TileLoadState::Done) {
     const auto* renderContent = tile.getContent().getRenderContent();
     if (renderContent &&
-      renderContent->tuneState == TileRenderContent::TuneState::Idle &&
-      renderContent->tuneVersion < _externals.gltfTuner->currentVersion)
-      return true;
+        renderContent->tuneState == TileRenderContent::TuneState::Idle) {
+      // Need to account for tuneModel's version too in case finishLoading
+      // hasn't yet been called
+      int latestVersion = renderContent->tuneModel._tuneVersion;
+      if (-1 == latestVersion)
+        latestVersion = renderContent->getModel()._tuneVersion;
+      if (latestVersion < _externals.gltfTuner->getCurrentVersion())
+        return true;
+    }
   }
   return state == TileLoadState::Unloaded ||
          state == TileLoadState::FailedTemporarily ||
@@ -1529,6 +1541,8 @@ void TilesetContentManager::finishLoading(
       renderContent->tuneState = TileRenderContent::TuneState::Idle;
       _externals.pPrepareRendererResources->free(tile, nullptr, renderContent->getRenderResources());
       renderContent->setModel(std::move(renderContent->tuneModel));
+      // reset after move because tested in tileNeedsWorkerThreadLoading:
+      renderContent->tuneModel._tuneVersion = -1;
       renderContent->setRenderResources(_externals.pPrepareRendererResources->prepareInMainThread(tile, renderContent->pTuneRenderResources));
       renderContent->pTuneRenderResources = nullptr;
       return;
@@ -1601,8 +1615,6 @@ void TilesetContentManager::setTileContent(
             std::move(result.rasterOverlayDetails),
             pWorkerRenderResources},
         std::move(result.contentKind));
-    if (auto* renderContent = tile.getContent().getRenderContent())
-      renderContent->tuneVersion = result.tuneVersion;
 
     if (!tile.getContent().isUnknownContent()) {
       tile.incrementDoNotUnloadSubtreeCountOnParent(

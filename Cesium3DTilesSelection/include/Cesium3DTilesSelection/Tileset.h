@@ -480,6 +480,8 @@ private:
       float deltaTime,
       ViewUpdateResult& result) const noexcept;
 
+  int getCurrentGltfTuningVersion() const;
+
   TilesetExternals _externals;
   CesiumAsync::AsyncSystem _asyncSystem;
 
@@ -566,7 +568,8 @@ private:
   static TraversalDetails createTraversalDetailsForSingleTile(
       const FrameState& frameState,
       const Tile& tile,
-      const TileSelectionState& lastFrameSelectionState);
+      const TileSelectionState& lastFrameSelectionState,
+      int minGltfTuningVersion);
 };
 
 } // namespace Cesium3DTilesSelection
