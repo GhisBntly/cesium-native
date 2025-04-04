@@ -127,9 +127,6 @@ struct CESIUM3DTILESSELECTION_API TileLoadResult {
    */
   TileLoadResultState state;
 
-  //! The version at which the glTF model has been tuned upon loading.
-  int tuneVersion = -1;
-
   /**
    * @brief The ellipsoid that this tile uses.
    *
@@ -137,6 +134,9 @@ struct CESIUM3DTILESSELECTION_API TileLoadResult {
    */
   CesiumGeospatial::Ellipsoid ellipsoid =
       CesiumGeospatial::Ellipsoid::UNIT_SPHERE;
+
+  //! The version at which the glTF model has been tuned upon loading.
+  int tuneVersion = -1;
 
   /**
    * @brief Create a result with Failed state

@@ -62,7 +62,7 @@ function(configure_cesium_library targetName)
 
         if(CESIUM_INSTALL_STATIC_LIBS)
             install(TARGETS ${targetName}
-                CONFIGURATIONS Release RelWithDebInfo
+                CONFIGURATIONS Release RelWithDebInfo UnrealDebug
                 LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
             )
             install(TARGETS ${targetName}

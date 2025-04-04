@@ -1299,7 +1299,7 @@ UnloadTileContentResult TilesetContentManager::unloadTileContent(Tile& tile) {
       switch (renderContent->tuneState) {
       case TileRenderContent::TuneState::WorkerRunning:
         // Worker thread is running, we cannot unload yet.
-        return false;
+        return UnloadTileContentResult::Keep;
       case TileRenderContent::TuneState::WorkerDone:
         // Free temporary render resources.
         assert(renderContent->pTuneRenderResources);

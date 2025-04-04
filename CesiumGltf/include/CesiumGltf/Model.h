@@ -284,10 +284,4 @@ struct CESIUMGLTF_API Model : public ModelSpec {
   bool isExtensionRequired(const std::string& extensionName) const noexcept;
 };
 
-/**
- * @brief Get the node transformation matrix.
- */
-CESIUMGLTF_API glm::dmat4x4
-getNodeTransform(const Node& node, const glm::dmat4x4& rootTransform);
-
 } // namespace CesiumGltf

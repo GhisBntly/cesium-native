@@ -1795,6 +1795,7 @@ TEST_CASE("Test GLTF tune state machine") {
       std::nullopt,
       std::nullopt,
       nullptr,
+      nullptr,
       {},
       TileLoadResultState::Success};
 
@@ -1811,7 +1812,6 @@ TEST_CASE("Test GLTF tune state machine") {
           externals,
           options,
           RasterOverlayCollection{loadedTiles, externals},
-          {},
           std::move(pMockedLoader),
           std::move(pRootTile)};
 
@@ -1835,7 +1835,7 @@ TEST_CASE("Test GLTF tune state machine") {
   // Start worker-thread phase of tuning.
   pManager->loadTileContent(tile, options);
   // Unloading should be refused while worker-thread is running.
-  CHECK(!pManager->unloadTileContent(tile));
+  CHECK(pManager->unloadTileContent(tile) == UnloadTileContentResult::Keep);
   // Wait completion of worker-thread phase.
   pManager->waitUntilIdle();
   CHECK(!pManager->tileNeedsWorkerThreadLoading(tile));
@@ -1844,7 +1844,7 @@ TEST_CASE("Test GLTF tune state machine") {
   // The temporary renderer resource should have been created.
   CHECK(pMockedPrepareRendererResources->totalAllocation == 2);
 
-  SECTION("Perform main-thread phase of tuning") {
+  SUBCASE("Perform main-thread phase of tuning") {
     pManager->finishLoading(tile, options);
     CHECK(!pManager->tileNeedsWorkerThreadLoading(tile));
     CHECK(!pManager->tileNeedsMainThreadLoading(tile));
@@ -1853,7 +1853,7 @@ TEST_CASE("Test GLTF tune state machine") {
     CHECK(pMockedPrepareRendererResources->totalAllocation == 1);
   }
   
-  SECTION("Unload tile before main-thread phase of tuning") {
+  SUBCASE("Unload tile before main-thread phase of tuning") {
     CHECK(pManager->unloadTileContent(tile));
     CHECK(pMockedPrepareRendererResources->totalAllocation == 0);
   }
