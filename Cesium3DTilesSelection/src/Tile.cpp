@@ -220,6 +220,8 @@ bool Tile::isRenderable(std::optional<int> modelVersion) const noexcept {
   }
 
   if (getState() == TileLoadState::Done) {
+    if (!_renderEngineReadiness)
+      return false;
     auto* renderContent = getContent().getRenderContent();
     if (renderContent && modelVersion &&
         // compares optional values if both have one:
@@ -237,6 +239,10 @@ bool Tile::isRenderable(std::optional<int> modelVersion) const noexcept {
     }
   }
   return false;
+}
+
+void Tile::setRenderEngineReadiness(bool const renderEngineReady) noexcept {
+  _renderEngineReadiness = renderEngineReady;
 }
 
 bool Tile::isRenderContent() const noexcept {
