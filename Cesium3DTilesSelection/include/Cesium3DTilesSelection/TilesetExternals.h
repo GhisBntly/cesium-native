@@ -24,15 +24,19 @@ class CreditSystem;
 namespace Cesium3DTilesSelection {
 class IPrepareRendererResources;
 
-//! Abstract class that allows tuning a glTF model.
-//! "Tuning" means reorganizing the primitives, eg. merging or splitting them.
-//! Merging primitives can lead to improved rendering performance.
-//! Splitting primitives allows to assign different materials to parts that were initially in the same primitive.
-//! Tuning is done in 2 phases: first phase in worker thread, then second phase in main thread.
-//! Tuning can occur several times during the lifetime of the model, depending on current needs.
-//! For example, if the user wants to assign a specific material on some part of the model,
-//! we can trigger a new tuning process.
-//! Hence the use of a "tune version" which allows to know if the mesh is up-to-date, or must be re-processed.
+
+/** Abstract class that allows tuning a glTF model.
+ * "Tuning" means reorganizing the primitives, eg. merging or splitting them.
+ * Merging primitives can lead to improved rendering performance.
+ * Splitting primitives allows to assign different materials to parts that were
+ * initially in the same primitive. Tuning is done in 2 phases: first phase in
+ * worker thread, then second phase in main thread. Tuning can occur several
+ * times during the lifetime of the model, depending on current needs. Hence
+ * the use of a "tune version" which allows to know if the mesh is up-to-date,
+ * or must be re-processed.
+ * A just constructed tuner is considered nilpotent, ie. tuning
+ * will not happen until retune() has been called at least once
+ */
 class GltfTuner
 {
 	//! The current version of the tuner, which should be incremented by client code whenever
@@ -41,12 +45,7 @@ class GltfTuner
   std::atomic_int currentVersion = initialVersion;
 
 public:
-  //! Initialize currentVersion to 0 to have the cesium meshes be retuned even before any rules have been
-  //! set. Although it can merge some meshes that were not in the original glTF, is it worth the overhead?
-  //! Initialize to -1 instead to only tune meshes when material and/or 4D rules have been set.
-  //! Keeping 0 for the moment because of severe issues seen with 4D animation, until the problem has been
-  //! investigated. TODO_JDE: need to test whether material tuning is also affected?
-  static constexpr int initialVersion = 0;
+  static constexpr int initialVersion = -1;
   int getCurrentVersion() const { return currentVersion; }
   int retune() { return ++currentVersion; }
 
