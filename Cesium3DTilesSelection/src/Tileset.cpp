@@ -1645,7 +1645,7 @@ void Tileset::_processMainThreadLoadQueue() {
       // Test if main-thread phase of glTF tuning should be performed.
       const auto* renderContent = task.pTile->getContent().getRenderContent();
       if (renderContent &&
-        renderContent->tuneState == TileRenderContent::TuneState::WorkerDone)
+        renderContent->getTunerState() == TileRenderContent::TunerState::WorkerDone)
         this->_pTilesetContentManager->finishLoading(*task.pTile, this->_options);
     }
     auto time = std::chrono::system_clock::now();
