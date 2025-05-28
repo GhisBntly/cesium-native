@@ -264,7 +264,7 @@ int64_t Tile::computeByteSize() const noexcept {
   return bytes;
 }
 
-bool Tile::isRenderable(int minTuneVersionNeeded) const noexcept {
+bool Tile::isRenderable(int minTuningVersionNeeded) const noexcept {
   if (getState() == TileLoadState::Failed) {
     // Explicitly treat failed tiles as "renderable" - we just treat them like
     // empty tiles.
@@ -275,8 +275,8 @@ bool Tile::isRenderable(int minTuneVersionNeeded) const noexcept {
     if (!_renderEngineReadiness)
       return false;
     auto* renderContent = getContent().getRenderContent();
-    if (renderContent && -1 != minTuneVersionNeeded &&
-      minTuneVersionNeeded > renderContent->getModel()._tuneVersion)
+    if (renderContent && -1 != minTuningVersionNeeded &&
+      minTuningVersionNeeded > renderContent->getModel()._tuningVersion)
       return false;
     // An unconditionally-refined tile is never renderable... UNLESS it has no
     // children, in which case waiting longer will be futile.

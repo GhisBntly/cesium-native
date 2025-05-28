@@ -14,7 +14,7 @@ namespace CesiumGltf {
 struct CESIUMGLTF_API Model : public ModelSpec {
 
   //! When produced by the glTF tuner, identifies the model version
-  int _tuneVersion = -1;
+  int _tuningVersion = -1;
 
   Model() = default;
 

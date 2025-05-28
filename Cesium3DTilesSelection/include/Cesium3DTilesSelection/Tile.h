@@ -489,11 +489,11 @@ public:
 
   /**
    * @brief Determines if this tile is currently renderable.
-   * @param minTuneVersionNeeded Minimum tuning version needed to allow this tile to render.
-   *    See TileLoadResult::tuneVersion, TileRenderContent::tuneVersion.
+   * @param minTuningVersionNeeded Minimum tuning version needed to allow this tile to render.
+   *    See TileLoadResult::tuningVersion, TileRenderContent::tuningVersion.
    *    Pass -1 to ignore the Gltf tuning version of the tile.
    */
-  bool isRenderable(int minTuneVersionNeeded) const noexcept;
+  bool isRenderable(int minTuningVersionNeeded) const noexcept;
 
   /**
    * @brief Set by the render engine to notify when a tile needs post-load

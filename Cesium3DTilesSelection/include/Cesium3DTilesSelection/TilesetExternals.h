@@ -37,10 +37,9 @@ class IPrepareRendererResources;
  * A just constructed tuner is considered nilpotent, ie. tuning
  * will not happen until retune() has been called at least once
  */
-class GltfTuner
-{
-	//! The current version of the tuner, which should be incremented by client code whenever
-	//! models needs to be re-tuned.
+class GltfTuner {
+  //! The current version of the tuner, which should be incremented by client
+  //! code whenever models needs to be re-tuned.
   //! @see initialVersion
   std::atomic_int currentVersion = initialVersion;
 
@@ -49,10 +48,13 @@ public:
   int getCurrentVersion() const { return currentVersion; }
   int retune() { return ++currentVersion; }
 
-	virtual ~GltfTuner() = default;
-  virtual bool Tune(const CesiumGltf::Model& model, const glm::dmat4& tileTransform,
-    const glm::dvec4& rootTranslation, CesiumGltf::Model& tunedModel) = 0;
-	virtual void ParseTilesetJson(const rapidjson::Document& tilesetJson) = 0;
+  virtual ~GltfTuner() = default;
+  virtual bool apply(
+      const CesiumGltf::Model& model,
+      const glm::dmat4& tileTransform,
+      const glm::dvec4& rootTranslation,
+      CesiumGltf::Model& tunedModel) = 0;
+  virtual void parseTilesetJson(const rapidjson::Document& tilesetJson) = 0;
 };
 
 /**

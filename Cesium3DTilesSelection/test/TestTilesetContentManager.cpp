@@ -1785,10 +1785,10 @@ TEST_CASE("Test GLTF tune state machine") {
         CesiumGltf::Model& out_model) override {
       ++tuneCallCount;
       out_model = model;
-      out_model._tuneVersion = getCurrentVersion();
+      out_model._tuningVersion = getCurrentVersion();
       return true;
     }
-    void ParseTilesetJson(const rapidjson::Document&) override {}
+    void parseTilesetJson(const rapidjson::Document&) override {}
   };
   auto gltfTuner = std::make_shared<SimpleGltfTuner>();
   externals.gltfTuner = gltfTuner;

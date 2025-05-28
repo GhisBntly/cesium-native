@@ -63,7 +63,7 @@ void TileRenderContent::resetTunedRenderResources() noexcept {
 void TileRenderContent::replaceWithTunedModel() noexcept {
   _model = std::move(_tunedModel);
   // reset after move because tested in tileNeedsWorkerThreadLoading:
-  _tunedModel._tuneVersion = -1;
+  _tunedModel._tuningVersion = -1;
   _pRenderResources = _pTunedRenderResources;
   _pTunedRenderResources = nullptr;
 }

@@ -208,7 +208,7 @@ public:
   TunerState getTunerState() const noexcept;
 
   /** Update the tuning process state of the glTF model of this tile content. */
-  void setTunerState(TunerState tuneState) noexcept;
+  void setTunerState(TunerState tunerState) noexcept;
 
   /** Get the temporary tuned model of this tile content. Its validity can be
    * tested by comparing its _tuningVersion to -1, as the lowest version for a

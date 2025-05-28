@@ -863,7 +863,7 @@ TilesetJsonLoader::createLoader(
 
         // Let the optional tuner parse any extra information from tileset.json
         if (gltfTuner) {
-          gltfTuner->ParseTilesetJson(tilesetJson);
+          gltfTuner->parseTilesetJson(tilesetJson);
         }
 
         return TilesetJsonLoader::createLoader(

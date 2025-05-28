@@ -1088,12 +1088,12 @@ bool mustContinueRefiningToDeeperTiles(
     const Tile& tile,
     const TileSelectionState& lastFrameSelectionState,
     int32_t lastFrameNumber,
-    int minTuneVersionNeeded) noexcept {
+    int minTuningVersionNeeded) noexcept {
   const TileSelectionState::Result originalResult =
       lastFrameSelectionState.getOriginalResult(lastFrameNumber);
 
   return originalResult == TileSelectionState::Result::Refined &&
-         !tile.isRenderable(minTuneVersionNeeded);
+         !tile.isRenderable(minTuningVersionNeeded);
 }
 
 } // namespace
