@@ -4,10 +4,10 @@
 #include <Cesium3DTilesSelection/TileOcclusionRendererProxy.h>
 #include <Cesium3DTilesSelection/TilesetSharedAssetSystem.h>
 #include <Cesium3DTilesSelection/spdlog-cesium.h>
-#include <rapidjson/fwd.h>
 #include <CesiumAsync/AsyncSystem.h>
 
 #include <glm/fwd.hpp>
+#include <rapidjson/fwd.h>
 
 #include <atomic>
 #include <memory>
@@ -39,6 +39,7 @@ class IPrepareRendererResources;
  */
 class GltfTuner {
 public:
+  /** Version of a just constructed, nilpotent glTF tuner. */
   static constexpr int initialVersion = -1;
 
 private:
@@ -141,7 +142,13 @@ public:
   CesiumUtility::IntrusivePointer<TilesetSharedAssetSystem> pSharedAssetSystem =
       TilesetSharedAssetSystem::getDefault();
 
-  std::shared_ptr<GltfTuner> gltfTuner = nullptr;
+  /**
+   * Optional user-controlled tile loading post-processing stage that can modify
+   * the glTF meshes (eg. split or merge them).
+   *
+   * @see Cesium3DTilesSelection::GltfTuner
+   */
+  std::shared_ptr<GltfTuner> gltfTuner = {};
 };
 
 } // namespace Cesium3DTilesSelection
