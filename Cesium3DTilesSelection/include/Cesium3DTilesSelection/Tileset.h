@@ -480,7 +480,7 @@ private:
       float deltaTime,
       ViewUpdateResult& result) const noexcept;
 
-  int getCurrentGltfTuningVersion() const;
+  std::optional<int> getGltfModifierVersion() const;
 
   TilesetExternals _externals;
   CesiumAsync::AsyncSystem _asyncSystem;
@@ -569,7 +569,7 @@ private:
       const FrameState& frameState,
       const Tile& tile,
       const TileSelectionState& lastFrameSelectionState,
-      int minGltfTuningVersion);
+      std::optional<int> modelVersion);
 };
 
 } // namespace Cesium3DTilesSelection

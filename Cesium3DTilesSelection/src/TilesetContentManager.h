@@ -178,8 +178,7 @@ private:
 
   bool discardOutdatedRenderResources(
       Tile& tile,
-      TileRenderContent& renderContent,
-      bool bTunedModel);
+      TileRenderContent& renderContent);
 
   TilesetExternals _externals;
   std::vector<CesiumAsync::IAssetAccessor::THeader> _requestHeaders;

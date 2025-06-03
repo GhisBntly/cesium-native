@@ -1012,7 +1012,7 @@ Tileset::TraversalDetails Tileset::_visitTileIfNeeded(
           frameState,
           tile,
           lastFrameSelectionState,
-          getCurrentGltfTuningVersion());
+          getGltfModifierVersion());
     } else if (this->_options.preloadSiblings) {
       // Preload this culled sibling as requested.
       addTileToLoadQueue(tile, TileLoadPriorityGroup::Preload, tilePriority);
@@ -1062,7 +1062,7 @@ Tileset::TraversalDetails Tileset::_renderLeaf(
       frameState,
       tile,
       lastFrameSelectionState,
-      getCurrentGltfTuningVersion());
+      getGltfModifierVersion());
 }
 
 namespace {
@@ -1088,12 +1088,12 @@ bool mustContinueRefiningToDeeperTiles(
     const Tile& tile,
     const TileSelectionState& lastFrameSelectionState,
     int32_t lastFrameNumber,
-    int minTuningVersionNeeded) noexcept {
+    std::optional<int> modelVersion) noexcept {
   const TileSelectionState::Result originalResult =
       lastFrameSelectionState.getOriginalResult(lastFrameNumber);
 
   return originalResult == TileSelectionState::Result::Refined &&
-         !tile.isRenderable(minTuningVersionNeeded);
+         !tile.isRenderable(modelVersion);
 }
 
 } // namespace
@@ -1116,11 +1116,14 @@ Tileset::TraversalDetails Tileset::_renderInnerTile(
       frameState,
       tile,
       lastFrameSelectionState,
-      getCurrentGltfTuningVersion());
+      getGltfModifierVersion());
 }
 
-int Tileset::getCurrentGltfTuningVersion() const {
-  return _externals.gltfTuner ? _externals.gltfTuner->getCurrentVersion() : -1;
+std::optional<int> Tileset::getGltfModifierVersion() const {
+  if (_externals.gltfModifier)
+    return _externals.gltfModifier->getCurrentVersion();
+  else
+    return std::nullopt;
 }
 
 bool Tileset::_loadAndRenderAdditiveRefinedTile(
@@ -1194,9 +1197,9 @@ bool Tileset::_kickDescendantsAndRenderTile(
   const bool wasRenderedLastFrame =
       lastFrameSelectionState.getResult(frameState.lastFrameNumber) ==
       TileSelectionState::Result::Rendered;
-  int const currentTuningVer = getCurrentGltfTuningVersion();
+  auto const modifierVersion = getGltfModifierVersion();
   const bool wasReallyRenderedLastFrame =
-      wasRenderedLastFrame && tile.isRenderable(currentTuningVer);
+      wasRenderedLastFrame && tile.isRenderable(modifierVersion);
 
   if (!wasReallyRenderedLastFrame &&
       traversalDetails.notYetRenderableCount >
@@ -1226,11 +1229,11 @@ bool Tileset::_kickDescendantsAndRenderTile(
     }
 
     traversalDetails.notYetRenderableCount =
-        tile.isRenderable(currentTuningVer) ? 0 : 1;
+        tile.isRenderable(modifierVersion) ? 0 : 1;
     queuedForLoad = true;
   }
 
-  bool isRenderable = tile.isRenderable(currentTuningVer);
+  bool isRenderable = tile.isRenderable(modifierVersion);
   traversalDetails.allAreRenderable = isRenderable;
   traversalDetails.anyWereRenderedLastFrame =
       isRenderable && wasRenderedLastFrame;
@@ -1429,7 +1432,7 @@ Tileset::TraversalDetails Tileset::_visitTile(
         tile,
         lastFrameSelectionState,
         frameState.lastFrameNumber,
-        getCurrentGltfTuningVersion());
+        getGltfModifierVersion());
     if (mustRefine) {
       // // We must refine even though this tile meets the SSE.
       action = VisitTileAction::Refine;
@@ -1503,10 +1506,9 @@ Tileset::TraversalDetails Tileset::_visitTile(
   // of a tile that is not yet loaded, because it means we will still have a
   // hole, and quite possibly a bigger one.
   bool wantToKick = kickDueToNonReadyDescendant || kickDueToTileFadingIn;
-  bool willKick =
-      wantToKick && (traversalDetails.notYetRenderableCount >
-                         this->_options.loadingDescendantLimit ||
-                     tile.isRenderable(getCurrentGltfTuningVersion()));
+  bool willKick = wantToKick && (traversalDetails.notYetRenderableCount >
+                                     this->_options.loadingDescendantLimit ||
+                                 tile.isRenderable(getGltfModifierVersion()));
 
   if (willKick) {
     // Kick all descendants out of the render list and render this tile instead
@@ -1647,7 +1649,7 @@ void Tileset::_processMainThreadLoadQueue() {
       // Test if main-thread phase of glTF tuning should be performed.
       const auto* renderContent = task.pTile->getContent().getRenderContent();
       if (renderContent &&
-        renderContent->getTunerState() == TileRenderContent::TunerState::WorkerDone)
+        renderContent->getGltfModifierState() == GltfModifier::State::WorkerDone)
         this->_pTilesetContentManager->finishLoading(*task.pTile, this->_options);
     }
     auto time = std::chrono::system_clock::now();
@@ -1753,8 +1755,8 @@ void Tileset::addTileToLoadQueue(
           this->_mainThreadLoadQueue.end(),
           [&](const TileLoadTask& task) { return task.pTile == &tile; }) ==
       this->_mainThreadLoadQueue.end());
-  auto modifierVersion = _externals.gltfTuner
-                             ? _externals.gltTuner->getCurrentVersion()
+  auto modifierVersion = _externals.gltfModifier
+                             ? _externals.gltfModifier->getCurrentVersion()
                              : std::nullopt;
   if (tile.needsWorkerThreadLoading(modifierVersion)) {
     this->_workerThreadLoadQueue.push_back({&tile, priorityGroup, priority});
@@ -1767,10 +1769,10 @@ Tileset::TraversalDetails Tileset::createTraversalDetailsForSingleTile(
     const FrameState& frameState,
     const Tile& tile,
     const TileSelectionState& lastFrameSelectionState,
-    int minGltfTuningVersion) {
+    std::optional<int> modelVersion) {
   TileSelectionState::Result lastFrameResult =
       lastFrameSelectionState.getResult(frameState.lastFrameNumber);
-  bool isRenderable = tile.isRenderable(minGltfTuningVersion);
+  bool isRenderable = tile.isRenderable(modelVersion);
 
   bool wasRenderedLastFrame =
       lastFrameResult == TileSelectionState::Result::Rendered;
@@ -1791,7 +1793,7 @@ Tileset::TraversalDetails Tileset::createTraversalDetailsForSingleTile(
             frameState,
             child,
             child.getLastSelectionState(),
-            minGltfTuningVersion);
+            modelVersion);
         wasRenderedLastFrame |= childDetails.anyWereRenderedLastFrame;
       }
     }

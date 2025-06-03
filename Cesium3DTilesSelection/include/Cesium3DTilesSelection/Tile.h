@@ -489,11 +489,10 @@ public:
 
   /**
    * @brief Determines if this tile is currently renderable.
-   * @param minTuningVersionNeeded Minimum tuning version needed to allow this tile to render.
-   *    See TileLoadResult::tuningVersion, TileRenderContent::tuningVersion.
-   *    Pass -1 to ignore the Gltf tuning version of the tile.
+   * @param modelVersion Optionally, a model version required to allow this
+   * tile to render. See CesiumGltf::Model::version.
    */
-  bool isRenderable(int minTuningVersionNeeded) const noexcept;
+  bool isRenderable(std::optional<int> modelVersion) const noexcept;
 
   /**
    * @brief Set by the render engine to notify when a tile needs post-load
