@@ -1037,7 +1037,7 @@ void TilesetContentManager::loadTileContent(
     auto* renderContent = tile.getContent().getRenderContent();
     if (renderContent &&
         renderContent->getTunerState() == TileRenderContent::TunerState::Idle &&
-        renderContent->getModel()._tuningVersion <
+        renderContent->getModel().version <
             _externals.gltfTuner->getCurrentVersion()) {
       renderContent->setTunerState(
           TileRenderContent::TunerState::WorkerRunning);
@@ -1519,7 +1519,7 @@ bool TilesetContentManager::discardOutdatedRenderResources(
     return false;
   const CesiumGltf::Model& model =
       bTunedModel ? renderContent.getTunedModel() : renderContent.getModel();
-  if (model._tuningVersion < _externals.gltfTuner->getCurrentVersion()) {
+  if (model.version < _externals.gltfTuner->getCurrentVersion()) {
     _externals.pPrepareRendererResources->free(
         tile,
         bTunedModel ? renderContent.getTunedRenderResources()
@@ -1579,7 +1579,7 @@ void TilesetContentManager::finishLoading(
   // The members tested below are not used in this case: model is tuned "in
   // place", since the tile isn't displayed yet:
   CESIUM_ASSERT(
-      pRenderContent->getTunedModel()._tuningVersion == -1 &&
+      pRenderContent->getTunedModel().version == -1 &&
       !pRenderContent->getTunedRenderResources());
   if (discardOutdatedRenderResources(tile, *pRenderContent, false)) {
     return;

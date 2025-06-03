@@ -42,7 +42,8 @@ void TileRenderContent::setTunerState(
   _tunerState = tunerState;
 }
 
-const CesiumGltf::Model& TileRenderContent::getTunedModel() const noexcept {
+const std::optional<CesiumGltf::Model>&
+TileRenderContent::getTunedModel() const noexcept {
   return _tunedModel;
 }
 
@@ -64,7 +65,7 @@ void TileRenderContent::resetTunedRenderResources() noexcept {
 void TileRenderContent::replaceWithTunedModel() noexcept {
   _model = std::move(_tunedModel);
   // reset after move because tested in tileNeedsWorkerThreadLoading:
-  _tunedModel._tuningVersion = -1;
+  _tunedModel.version.reset();
   _pRenderResources = _pTunedRenderResources;
   _pTunedRenderResources = nullptr;
 }

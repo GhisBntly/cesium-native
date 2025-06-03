@@ -1860,7 +1860,7 @@ TEST_CASE("Test GLTF tune state machine") {
         CesiumGltf::Model& out_model) override {
       ++tuneCallCount;
       out_model = model;
-      out_model._tuningVersion = getCurrentVersion();
+      out_model.version = getCurrentVersion();
       return true;
     }
     void parseTilesetJson(const rapidjson::Document&) override {}

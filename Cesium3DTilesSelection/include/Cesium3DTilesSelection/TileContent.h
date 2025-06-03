@@ -210,10 +210,8 @@ public:
   /** Update the tuning process state of the glTF model of this tile content. */
   void setTunerState(TunerState tunerState) noexcept;
 
-  /** Get the temporary tuned model of this tile content. Its validity can be
-   * tested by comparing its _tuningVersion to -1, as the lowest version for a
-   * tuned glTF model is 0. */
-  const CesiumGltf::Model& getTunedModel() const noexcept;
+  /** Get the optional temporary tuned model of this tile content. */
+  const std::optional<CesiumGltf::Model>& getTunedModel() const noexcept;
 
   /** Get the temporary tuned model's render resources of this tile content, if
    * any, or nullptr. */
