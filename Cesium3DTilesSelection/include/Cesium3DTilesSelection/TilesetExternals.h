@@ -38,22 +38,49 @@ class IPrepareRendererResources;
  * will not happen until retune() has been called at least once
  */
 class GltfTuner {
-  //! The current version of the tuner, which should be incremented by client
-  //! code whenever models needs to be re-tuned.
-  //! @see initialVersion
+public:
+  static constexpr int initialVersion = -1;
+
+private:
+  /** The current version of the tuner, which should be incremented by client
+   * code whenever models needs to be re-tuned.
+   * @see initialVersion
+   */
   std::atomic_int currentVersion = initialVersion;
 
 public:
-  static constexpr int initialVersion = -1;
+  virtual ~GltfTuner() = default;
+
+  /** @return The current tuner version, to identify oudated tile models. */
   int getCurrentVersion() const { return currentVersion; }
+
+  /** Increment the tuner version, which is also required to activate the tuner
+   * after it has been constructed in its default nilpotent state. Tiles already
+   * loaded will be re-processed without being unloaded, the new model replacing
+   * the old one without transition. */
   int retune() { return ++currentVersion; }
 
-  virtual ~GltfTuner() = default;
+  /** The method called after a new tile has been loaded, and everytime the
+   * tuner's version is incremented with {@link retune}.
+   * @param model Input model that may have to be processed
+   * @param tileTransform Transformation of the model's tile.
+   *     See {@link Cesium3DTilesSelection::Tile::getTransform}.
+   * @param rootTranslation Translation of the root tile of the tileset
+   * @param tunedModel Target of the transformation process. My be equal to the
+   * input model.
+   * @return True if any processing was done and the result placed in the
+   * tunedModel parameter, false when no processing was needed, in which case
+   * the tunedModel parameter was ignored.
+   */
   virtual bool apply(
       const CesiumGltf::Model& model,
       const glm::dmat4& tileTransform,
       const glm::dvec4& rootTranslation,
       CesiumGltf::Model& tunedModel) = 0;
+
+  /** Called during a tileset's initialization process to let the tuner get
+   * extra information from the tileset metadata before any tile has been
+   * loaded. */
   virtual void parseTilesetJson(const rapidjson::Document& tilesetJson) = 0;
 };
 
