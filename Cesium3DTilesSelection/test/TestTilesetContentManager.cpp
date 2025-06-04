@@ -1831,29 +1831,29 @@ TEST_CASE("Test GLTF tune state machine") {
 
   // After the tile is loaded, tuning should not be needed,
   // as it has already been done as part of the loading.
-  CHECK(!pManager->tileNeedsWorkerThreadLoading(tile));
-  CHECK(!pManager->tileNeedsMainThreadLoading(tile));
+  CHECK(!tile.needsWorkerThreadLoading(gltfTuner->getCurrentVersion()));
+  CHECK(!tile.needsMainThreadLoading(gltfTuner->getCurrentVersion()));
   CHECK(gltfTuner->tuneCallCount == 1);
   CHECK(pMockedPrepareRendererResources->totalAllocation == 1);
   // Increment tuner version, thus requiring a new tuning.
   gltfTuner->retune();
-  CHECK(pManager->tileNeedsWorkerThreadLoading(tile));
+  CHECK(tile.needsWorkerThreadLoading(gltfTuner->getCurrentVersion()));
   // Start worker-thread phase of tuning.
   pManager->loadTileContent(tile, options);
   // Unloading should be refused while worker-thread is running.
   CHECK(pManager->unloadTileContent(tile) == UnloadTileContentResult::Keep);
   // Wait completion of worker-thread phase.
   pManager->waitUntilIdle();
-  CHECK(!pManager->tileNeedsWorkerThreadLoading(tile));
-  CHECK(pManager->tileNeedsMainThreadLoading(tile));
+  CHECK(!tile.needsWorkerThreadLoading(gltfTuner->getCurrentVersion()));
+  CHECK(tile.needsMainThreadLoading(gltfTuner->getCurrentVersion()));
   CHECK(gltfTuner->tuneCallCount == 2);
   // The temporary renderer resource should have been created.
   CHECK(pMockedPrepareRendererResources->totalAllocation == 2);
 
   SUBCASE("Perform main-thread phase of tuning") {
     pManager->finishLoading(tile, options);
-    CHECK(!pManager->tileNeedsWorkerThreadLoading(tile));
-    CHECK(!pManager->tileNeedsMainThreadLoading(tile));
+    CHECK(!tile.needsWorkerThreadLoading(gltfTuner->getCurrentVersion()));
+    CHECK(!tile.needsMainThreadLoading(gltfTuner->getCurrentVersion()));
     // The temporary renderer resource should have been freed.
     CHECK(gltfTuner->tuneCallCount == 2);
     CHECK(pMockedPrepareRendererResources->totalAllocation == 1);

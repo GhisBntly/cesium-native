@@ -1751,10 +1751,12 @@ void Tileset::addTileToLoadQueue(
           this->_mainThreadLoadQueue.end(),
           [&](const TileLoadTask& task) { return task.pTile == &tile; }) ==
       this->_mainThreadLoadQueue.end());
-
-  if (this->_pTilesetContentManager->tileNeedsWorkerThreadLoading(tile)) {
+  auto modifierVersion = _externals.gltfTuner
+                             ? _externals.gltTuner->getCurrentVersion()
+                             : std::nullopt;
+  if (tile.needsWorkerThreadLoading(modifierVersion)) {
     this->_workerThreadLoadQueue.push_back({&tile, priorityGroup, priority});
-  } else if (this->_pTilesetContentManager->tileNeedsMainThreadLoading(tile)) {
+  } else if (tile.needsMainThreadLoading(modifierVersion)) {
     this->_mainThreadLoadQueue.push_back({&tile, priorityGroup, priority});
   }
 }

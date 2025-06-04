@@ -133,18 +133,6 @@ void unloadTileRecursively(
   }
 }
 
-bool anyRasterOverlaysNeedLoading(const Tile& tile) noexcept {
-  for (const RasterMappedTo3DTile& mapped : tile.getMappedRasterTiles()) {
-    const RasterOverlayTile* pLoading = mapped.getLoadingTile();
-    if (pLoading &&
-        pLoading->getState() == RasterOverlayTile::LoadState::Unloaded) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 std::optional<RegionAndCenter>
 getTileBoundingRegionForUpsampling(const Tile& parent) {
   // To create subdivided children, we need to know a bounding region for each.
@@ -1476,41 +1464,6 @@ int64_t TilesetContentManager::getTotalDataUsed() const noexcept {
   }
 
   return bytes;
-}
-
-bool TilesetContentManager::tileNeedsWorkerThreadLoading(
-    const Tile& tile) const noexcept {
-  auto state = tile.getState();
-  // Test if worker-thread phase of glTF tuning should be started.
-  if (_externals.gltfTuner && state == TileLoadState::Done) {
-    const auto* renderContent = tile.getContent().getRenderContent();
-    if (renderContent &&
-        renderContent->getTunerState() == TileRenderContent::TunerState::Idle) {
-      // Need to account for tuneModel's version too in case finishLoading
-      // hasn't yet been called
-      int latestVersion = renderContent->getTunedModel()._tuningVersion;
-      if (-1 == latestVersion)
-        latestVersion = renderContent->getModel()._tuningVersion;
-      if (latestVersion < _externals.gltfTuner->getCurrentVersion())
-        return true;
-    }
-  }
-  return state == TileLoadState::Unloaded ||
-         state == TileLoadState::FailedTemporarily ||
-         anyRasterOverlaysNeedLoading(tile);
-}
-
-bool TilesetContentManager::tileNeedsMainThreadLoading(
-    const Tile& tile) const noexcept {
-  // Test if main-thread phase of glTF tuning should be performed.
-  if (_externals.gltfTuner && tile.getState() == TileLoadState::Done) {
-    const auto* renderContent = tile.getContent().getRenderContent();
-    if (renderContent && renderContent->getTunerState() ==
-                             TileRenderContent::TunerState::WorkerDone)
-      return true;
-  }
-  return tile.getState() == TileLoadState::ContentLoaded &&
-         tile.isRenderContent();
 }
 
 bool TilesetContentManager::discardOutdatedRenderResources(
