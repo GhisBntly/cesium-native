@@ -264,7 +264,8 @@ option(CESIUM_DEBUG_TILE_UNLOADING "Whether to enable tracking of tile _doNotUnl
 option(CESIUM_CLANG_TIME_TRACE "Whether to enable the -ftime-trace compilation option when building with Clang." OFF)
 
 if (CESIUM_MSVC_STATIC_RUNTIME_ENABLED)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    # AdvViz: Should really be "MultiThreaded$<$<CONFIG:Debug>:Debug>", but I got MFC conflicts when building with Unreal from source in Debug - TODO for later...
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 endif()
 
 if (CESIUM_TRACING_ENABLED)
