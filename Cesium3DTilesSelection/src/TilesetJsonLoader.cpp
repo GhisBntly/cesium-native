@@ -2,7 +2,6 @@
 
 #include "ImplicitOctreeLoader.h"
 #include "ImplicitQuadtreeLoader.h"
-#include "TilesetContentLoaderResult.h"
 #include "logTileLoadResult.h"
 
 #include <Cesium3DTiles/Extension3dTilesBoundingVolumeCylinder.h>
@@ -20,6 +19,7 @@
 #include <Cesium3DTilesSelection/TileLoadResult.h>
 #include <Cesium3DTilesSelection/TileRefine.h>
 #include <Cesium3DTilesSelection/TilesetContentLoader.h>
+#include <Cesium3DTilesSelection/TilesetContentLoaderResult.h>
 #include <Cesium3DTilesSelection/TilesetExternals.h>
 #include <CesiumAsync/AsyncSystem.h>
 #include <CesiumAsync/HttpHeaders.h>
@@ -583,8 +583,10 @@ std::optional<Tile> parseTileJsonRecursively(
 
   if (implicitTilingJson) {
     // mark this tile as external
-    Tile tile{&currentLoader, std::make_unique<TileExternalContent>()};
-    tile.setTileID("");
+    Tile tile{
+        &currentLoader,
+        TileID(),
+        std::make_unique<TileExternalContent>()};
     tile.setTransform(tileTransform);
     tile.setBoundingVolume(tileBoundingVolume);
     tile.setViewerRequestVolume(tileViewerRequestVolume);
@@ -906,9 +908,9 @@ TilesetJsonLoader::createLoader(
 
   result.pRootTile = std::make_unique<Tile>(
       children[0].getLoader(),
+      TileID(),
       std::make_unique<TileExternalContent>());
 
-  result.pRootTile->setTileID("");
   result.pRootTile->setTransform(children[0].getTransform());
   result.pRootTile->setBoundingVolume(children[0].getBoundingVolume());
   result.pRootTile->setUnconditionallyRefine();
@@ -1098,6 +1100,18 @@ CesiumGeometry::Axis TilesetJsonLoader::getUpAxis() const noexcept {
 
 void TilesetJsonLoader::addChildLoader(
     std::unique_ptr<TilesetContentLoader> pLoader) {
+  if (this->getOwner() != nullptr) {
+    pLoader->setOwner(*this->getOwner());
+  }
+
   this->_children.emplace_back(std::move(pLoader));
 }
+
+void TilesetJsonLoader::setOwnerOfNestedLoaders(
+    TilesetContentManager& owner) noexcept {
+  for (const std::unique_ptr<TilesetContentLoader>& pLoader : this->_children) {
+    pLoader->setOwner(owner);
+  }
+}
+
 } // namespace Cesium3DTilesSelection

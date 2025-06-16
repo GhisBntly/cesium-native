@@ -537,7 +537,10 @@ void CesiumGltfReader::GltfReader::postprocessGltf(
     if (buffer.uri && buffer.uri->substr(0, dataPrefixLength) != dataPrefix) {
       resolvedBuffers.push_back(
           pAssetAccessor
-              ->get(asyncSystem, Uri::resolve(baseUrl, *buffer.uri, true), tHeaders)
+              ->get(
+                  asyncSystem,
+                  Uri::resolve(baseUrl, *buffer.uri, true),
+                  tHeaders)
               .thenInWorkerThread([pBuffer =
                                        &buffer](std::shared_ptr<IAssetRequest>&&
                                                     pRequest) {
@@ -646,7 +649,8 @@ void CesiumGltfReader::GltfReader::postprocessGltf(
       }
     };
 
-    std::string uri = Uri::resolve(baseUrl, *pStructuralMetadata->schemaUri, true);
+    std::string uri =
+        Uri::resolve(baseUrl, *pStructuralMetadata->schemaUri, true);
 
     SharedFuture<ResultPointer<Schema>> future =
         getAsset(asyncSystem, pAssetAccessor, uri, tHeaders);
@@ -668,7 +672,7 @@ void CesiumGltfReader::GltfReader::postprocessGltf(
   return asyncSystem.all(std::move(resolvedBuffers))
       .thenInWorkerThread(
           [pResult = std::move(pResult)](
-              std::vector<ExternalBufferLoadResult>&& loadResults) mutable {
+              std::vector<ExternalBufferLoadResult>&& loadResults) {
             for (auto& bufferResult : loadResults) {
               if (!bufferResult.success) {
                 pResult->warnings.push_back(
@@ -695,7 +699,7 @@ void CesiumGltfReader::GltfReader::postprocessGltf(
               }
             }
 
-            return std::move(*pResult.release());
+            return std::move(*pResult);
           });
 }
 
