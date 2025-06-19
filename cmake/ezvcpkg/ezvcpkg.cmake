@@ -162,6 +162,7 @@ endmacro()
 
 macro(EZVCPKG_BUILD)
     set(INSTALL_COMMAND "${EZVCPKG_EXE}" --vcpkg-root "${EZVCPKG_DIR}" install --triplet ${VCPKG_TRIPLET})
+    set(UPGRADE_COMMAND "${EZVCPKG_EXE}" --vcpkg-root "${EZVCPKG_DIR}" upgrade --no-dry-run --triplet ${VCPKG_TRIPLET})
 
     if (DEFINED VCPKG_OVERLAY_PORTS)
         if (CMAKE_HOST_WIN32)
@@ -181,6 +182,12 @@ macro(EZVCPKG_BUILD)
         endif()
     endif()
 
+    # 'upgrade' command doesn't take the features part as it upgrades the whole port...
+    set(EZVCPKG_PACKAGES_NO_FEATURES)
+    foreach(_PACKAGE ${EZVCPKG_PACKAGES})
+        string(REGEX REPLACE "\\[.*" "" _PACKAGE_NO_FEATURES ${_PACKAGE})
+        list(APPEND EZVCPKG_PACKAGES_NO_FEATURES ${_PACKAGE_NO_FEATURES})
+    endforeach()
     if (EZVCPKG_SERIALIZE)
         foreach(_PACKAGE ${EZVCPKG_PACKAGES})
             message(STATUS "EZVCPKG Building/Verifying package ${_PACKAGE} using triplet ${VCPKG_TRIPLET}")
@@ -193,10 +200,30 @@ macro(EZVCPKG_BUILD)
             )
             EZVCPKG_CHECK_RESULTS()
         endforeach()
+        foreach(_PACKAGE_NO_FEATURES ${EZVCPKG_PACKAGES_NO_FEATURES})
+            message(STATUS "EZVCPKG Upgrading package ${_PACKAGE_NO_FEATURES} using triplet ${VCPKG_TRIPLET}")
+            execute_process(
+                COMMAND ${UPGRADE_COMMAND} ${_PACKAGE_NO_FEATURES}
+                WORKING_DIRECTORY "${EZVCPKG_DIR}"
+                RESULTS_VARIABLE EZVCPKG_RESULT
+                OUTPUT_VARIABLE EZVCPKG_OUTPUT
+                ERROR_VARIABLE EZVCPKG_OUTPUT
+            )
+            EZVCPKG_CHECK_RESULTS()
+        endforeach()
     else()
         message(STATUS "EZVCPKG Building/Verifying packages ${EZVCPKG_PACKAGES} using triplet ${VCPKG_TRIPLET}")
         execute_process(
             COMMAND ${INSTALL_COMMAND} ${EZVCPKG_PACKAGES}
+            WORKING_DIRECTORY "${EZVCPKG_DIR}"
+            RESULTS_VARIABLE EZVCPKG_RESULT
+            OUTPUT_VARIABLE EZVCPKG_OUTPUT
+            ERROR_VARIABLE EZVCPKG_OUTPUT
+        )
+        EZVCPKG_CHECK_RESULTS()
+        message(STATUS "EZVCPKG Upgrading packages ${EZVCPKG_PACKAGES_NO_FEATURES} using triplet ${VCPKG_TRIPLET}")
+        execute_process(
+            COMMAND ${UPGRADE_COMMAND} ${EZVCPKG_PACKAGES_NO_FEATURES}
             WORKING_DIRECTORY "${EZVCPKG_DIR}"
             RESULTS_VARIABLE EZVCPKG_RESULT
             OUTPUT_VARIABLE EZVCPKG_OUTPUT
