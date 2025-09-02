@@ -857,7 +857,7 @@ TilesetContentManager::TilesetContentManager(
                            pLogger,
                            url,
                            pCompletedRequest->headers(),
-                           tilesetJson,
+                           std::move(tilesetJson),
                            ellipsoid)
                     .thenImmediately(
                         [](TilesetContentLoaderResult<TilesetContentLoader>&&
@@ -1363,6 +1363,13 @@ UnloadTileContentResult TilesetContentManager::unloadTileContent(Tile& tile) {
     return UnloadTileContentResult::Remove;
   }
 
+  // Detach raster tiles first so that the renderer's tile free
+  // process doesn't need to worry about them.
+  for (RasterMappedTo3DTile& mapped : tile.getMappedRasterTiles()) {
+    mapped.detachFromTile(*this->_externals.pPrepareRendererResources, tile);
+  }
+  tile.getMappedRasterTiles().clear();
+
   if (content.isExternalContent()) {
     // We can unload an external content tile with one reference, because this
     // represents the external content itself. Any more than that indicates
@@ -1378,13 +1385,6 @@ UnloadTileContentResult TilesetContentManager::unloadTileContent(Tile& tile) {
     tile.releaseReference("UnloadTileContent: External");
     return UnloadTileContentResult::RemoveAndClearChildren;
   }
-
-  // Detach raster tiles first so that the renderer's tile free
-  // process doesn't need to worry about them.
-  for (RasterMappedTo3DTile& mapped : tile.getMappedRasterTiles()) {
-    mapped.detachFromTile(*this->_externals.pPrepareRendererResources, tile);
-  }
-  tile.getMappedRasterTiles().clear();
 
   // Unload the renderer resources and clear any raster overlay tiles. We can do
   // this even if the tile can't be fully unloaded because this tile's geometry
@@ -1742,7 +1742,7 @@ namespace {
 class WeightedRoundRobin {
 public:
   typedef bool (TileLoadRequester::*HasMoreTilesToLoad)() const;
-  typedef Tile* (TileLoadRequester::*GetNextTileToLoad)();
+  typedef const Tile* (TileLoadRequester::*GetNextTileToLoad)();
 
   WeightedRoundRobin(
       double& roundRobinValue,
@@ -1782,7 +1782,7 @@ public:
 
     TileLoadRequester& requester = *this->_requestersWithRequests[index];
 
-    Tile* pToLoad = std::invoke(this->_getNextTileToLoad, requester);
+    const Tile* pToLoad = std::invoke(this->_getNextTileToLoad, requester);
     CESIUM_ASSERT(pToLoad);
 
     if (!pToLoad || !std::invoke(this->_hasMoreTilesToLoad, requester)) {
@@ -1791,7 +1791,9 @@ public:
       this->recomputeRequesterFractions();
     }
 
-    return pToLoad;
+    // The Tile is const from the perspective of the TileLoadRequester. But the
+    // TilesetContentManager is going to load it, so cast away the const.
+    return const_cast<Tile*>(pToLoad);
   }
 
 private:
