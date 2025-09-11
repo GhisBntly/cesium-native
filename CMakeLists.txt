@@ -149,6 +149,9 @@ set(PACKAGE_BUILD_DIR "${EZVCPKG_DIR}")
 
 if(NOT EZVCPKG_PACKAGES_DIR)
     set(PACKAGE_BUILD_DIR "${VCPKG_INSTALLED_DIR}/${VCPKG_TRIPLET}/")
+    if (NOT DEFINED ENV{VCPKG_ROOT})
+        message(FATAL_ERROR "VCPKG_ROOT environment variable not defined!")
+    endif()
     set(PACKAGE_BASE_DIR "$ENV{VCPKG_ROOT}/packages")
 endif()
 
