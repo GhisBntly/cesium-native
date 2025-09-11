@@ -152,6 +152,9 @@ if(NOT EZVCPKG_PACKAGES_DIR)
     if (NOT DEFINED ENV{VCPKG_ROOT})
         message(FATAL_ERROR "VCPKG_ROOT environment variable not defined!")
     endif()
+	# Shouldn't we parse ${VCPKG_INSTALLED_DIR}/vcpkg/info/<PORT>_<VERSION>_${VCPKG_TRIPLET}.list files instead?
+	# This way we wouln't depend on VCPKG_ROOT (although it seems mandatory to exist, I guess I should fix our
+	# cmake preset instead to not allow working without it...)
     set(PACKAGE_BASE_DIR "$ENV{VCPKG_ROOT}/packages")
 endif()
 
