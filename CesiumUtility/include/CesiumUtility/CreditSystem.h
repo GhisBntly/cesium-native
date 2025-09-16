@@ -24,13 +24,10 @@ public:
     return this->id == rhs.id;
   }
 
-  int32_t getPriority() const noexcept { return priority; }
-
 private:
   size_t id;
-  int32_t priority = -1;
 
-  Credit(size_t id_, int32_t prio = -1) noexcept : id(id_), priority(prio) {}
+  Credit(size_t id_) noexcept : id(id_) {}
 
   friend class CreditSystem;
   friend class CreditReferencer;
@@ -129,6 +126,7 @@ private:
     bool showOnScreen;
     int32_t referenceCount;
     bool shownLastSnapshot;
+    int32_t priority = -1;
   };
 
   std::vector<CreditRecord> _credits;

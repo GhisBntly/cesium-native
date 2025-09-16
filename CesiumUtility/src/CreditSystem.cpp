@@ -20,13 +20,15 @@ Credit CreditSystem::createCredit(std::string&& html, bool showOnScreen, int32_t
     if (this->_credits[id].html == html) {
       // Override the existing credit's showOnScreen value.
       this->_credits[id].showOnScreen = showOnScreen;
-      return Credit(id, priority);
+      this->_credits[id].priority =
+          std::max(priority, this->_credits[id].priority);
+      return Credit(id);
     }
   }
 
-  this->_credits.push_back({std::move(html), showOnScreen, 0, false});
+  this->_credits.push_back({std::move(html), showOnScreen, 0, false, priority});
 
-  return Credit(this->_credits.size() - 1, priority);
+  return Credit(this->_credits.size() - 1);
 }
 
 bool CreditSystem::shouldBeShownOnScreen(Credit credit) const noexcept {
@@ -100,8 +102,10 @@ const CreditsSnapshot& CreditSystem::getSnapshot() noexcept {
       currentCredits.end(),
       [this](const Credit& a, const Credit& b) {
         // compare custom priority before count/id, if any
-        if (a.getPriority() != b.getPriority())
-          return a.getPriority() > b.getPriority();
+        int32_t aPriority = this->_credits[a.id].priority;
+        int32_t bPriority = this->_credits[b.id].priority;
+        if (aPriority != bPriority)
+          return aPriority > bPriority;
         int32_t aCounts = this->_credits[a.id].referenceCount;
         int32_t bCounts = this->_credits[b.id].referenceCount;
         if (aCounts == bCounts)
