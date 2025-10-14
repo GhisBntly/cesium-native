@@ -94,6 +94,10 @@ set(PACKAGES_PRIVATE
     abseil draco ktx modp-base64 meshoptimizer openssl s2geometry
     libjpeg-turbo sqlite3 tinyxml2 libwebp zlib-ng picosha2
     earcut-hpp cpp-httplib[core] libmorton zstd
+    # AdvViz: added this one because our vcpkg seems to ignore the '"default-features": false' set on cpp-httplib in both
+	# cesium-unreal's overlay port for cesium-native, and cesium-native's own vcpkg.json, probably because of the version
+	# override in Carrot.git's root vcpkg.json :/ (manifest mode still somewhat buggy...)
+    brotli
 )
 
 # asmjit needed by blend2d on non-iOS platforms (iOS doesn't support JIT)
