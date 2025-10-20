@@ -83,21 +83,16 @@ endif()
 message(STATUS "VCPKG_OVERLAY_TRIPLETS ${VCPKG_OVERLAY_TRIPLETS}")
 
 # These packages are used in the public headers of Cesium libraries, so we need to distribute the headers and binaries
-# with the installation
+# with the installation. Engine-specific needs can use the CESIUM_PACKAGES_* variables to add more (see. Unreal plugin).
 # Note that fmt is a public dependency of the vcpkg version of spdlog
-# STB is not technically part of the public interface, but it is used by the downstream Cesium for Unreal project
-set(PACKAGES_PUBLIC asyncplusplus expected-lite fmt glm rapidjson spdlog stb ada-url)
+set(PACKAGES_PUBLIC ${CESIUM_PACKAGES_PUBLIC} asyncplusplus expected-lite fmt glm rapidjson spdlog ada-url)
 # These packages are used in the code and produce binaries, but are not part of the public interface.  Therefore we need
 # to distribute the binaries for linking, but not the headers, as downstream consumers don't need them
 # OpenSSL and abseil are both dependencies of s2geometry
-set(PACKAGES_PRIVATE
+set(PACKAGES_PRIVATE ${CESIUM_PACKAGES_PRIVATE}
     abseil draco ktx modp-base64 meshoptimizer openssl s2geometry
     libjpeg-turbo sqlite3 tinyxml2 libwebp zlib-ng picosha2
     earcut-hpp cpp-httplib[core] libmorton zstd
-    # AdvViz: added this one because our vcpkg seems to ignore the '"default-features": false' set on cpp-httplib in both
-	# cesium-unreal's overlay port for cesium-native, and cesium-native's own vcpkg.json, probably because of the version
-	# override in Carrot.git's root vcpkg.json :/ (manifest mode still somewhat buggy...)
-    brotli
 )
 
 # asmjit needed by blend2d on non-iOS platforms (iOS doesn't support JIT)
@@ -113,7 +108,7 @@ if(NOT CESIUM_DISABLE_CURL)
 endif()
 
 # Packages only used for testing
-set(PACKAGES_TEST doctest)
+set(PACKAGES_TEST ${CESIUM_PACKAGES_TEST} doctest)
 
 if(CESIUM_USE_EZVCPKG)
     set(PACKAGES_ALL ${PACKAGES_PUBLIC})
@@ -154,13 +149,7 @@ set(PACKAGE_BUILD_DIR "${EZVCPKG_DIR}")
 
 if(NOT EZVCPKG_PACKAGES_DIR)
     set(PACKAGE_BUILD_DIR "${VCPKG_INSTALLED_DIR}/${VCPKG_TRIPLET}/")
-    if (NOT DEFINED ENV{VCPKG_ROOT})
-        message(FATAL_ERROR "VCPKG_ROOT environment variable not defined!")
-    endif()
-	# Shouldn't we parse ${VCPKG_INSTALLED_DIR}/vcpkg/info/<PORT>_<VERSION>_${VCPKG_TRIPLET}.list files instead?
-	# This way we wouln't depend on VCPKG_ROOT (although it seems mandatory to exist, I guess I should fix our
-	# cmake preset instead to not allow working without it...)
-    set(PACKAGE_BASE_DIR "$ENV{VCPKG_ROOT}/packages")
+    set(PACKAGE_BASE_DIR "<SHOULD_NOT_NEED_THIS>")
 endif()
 
 message(STATUS "PACKAGE_BASE_DIR ${PACKAGE_BASE_DIR}")
@@ -181,42 +170,64 @@ cmake_dependent_option(
 
 set(CESIUM_CLANG_TIDY_USE_THREADS 14 CACHE STRING "Sets the number of threads for run-clang-tidy to use.")
 
-if ((CESIUM_INSTALL_STATIC_LIBS OR CESIUM_INSTALL_HEADERS)
-    AND (EZVCPKG_PACKAGES_DIR OR CESIUM_INSTALL_EXTERNALLY_BUILT_DEPENDENCIES)
-)
-    foreach(PACKAGE ${PACKAGES_PUBLIC})
+if (CESIUM_INSTALL_EXTERNALLY_BUILT_DEPENDENCIES)
+	set(PACKAGE_INCLUDE_PATTERN ".*/include/")
+	set(PLATFORM_LIB_PATTERN ".*\\.a$")
+	if (WIN32)
+		set(PLATFORM_LIB_PATTERN ".*\\.lib$")
+	endif()
+    foreach(PACKAGE ${PACKAGES_PUBLIC};${PACKAGES_PRIVATE})
         string(REGEX REPLACE "\\[.*\\]" "" PACKAGE "${PACKAGE}")
-        set(PACKAGE_DIR "${PACKAGE_BASE_DIR}/${PACKAGE}_${VCPKG_TRIPLET}")
-        message(DEBUG "PACKAGE_DIR ${PACKAGE_DIR}")
-
-        if(CESIUM_INSTALL_HEADERS AND NOT PACKAGE IN_LIST CESIUM_EXCLUDE_INSTALL_HEADERS)
-            install(
-                DIRECTORY ${PACKAGE_DIR}/include/
-                TYPE INCLUDE
-            )
-        endif()
-
-        if (CESIUM_INSTALL_STATIC_LIBS AND NOT PACKAGE IN_LIST CESIUM_EXCLUDE_INSTALL_STATIC_LIBS AND EXISTS ${PACKAGE_DIR}/lib)
-            install(
-                DIRECTORY $<IF:$<CONFIG:Debug>,${PACKAGE_DIR}/debug/lib/,${PACKAGE_DIR}/lib/>
-                DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            )
+		# The "_*_" wildcard is for the version, which we could alternatively retr1ieve from parsing the "vcpkg list"...
+		file(GLOB PACKAGE_LIST "${VCPKG_INSTALLED_DIR}/vcpkg/info/${PACKAGE}_*_${VCPKG_TRIPLET}.list")
+		set(installStaticLibs ON)
+		set(installPublicHeaders ON)
+        if (PACKAGE IN_LIST CESIUM_EXCLUDE_INSTALL_STATIC_LIBS)
+			set(installStaticLibs OFF)
+		endif()
+        if ((NOT PACKAGE IN_LIST PACKAGES_PUBLIC) OR PACKAGE IN_LIST CESIUM_EXCLUDE_INSTALL_HEADERS)
+			set(installPublicHeaders OFF)
+		endif()
+		if ((installStaticLibs OR installPublicHeaders) AND EXISTS "${PACKAGE_LIST}")
+			file(STRINGS "${PACKAGE_LIST}" PACKAGE_ENTRIES)
+			set(lastWholeIncludeDirInstalled)
+			foreach(PACKAGE_ENTRY ${PACKAGE_ENTRIES})
+				if ("${PACKAGE_ENTRY}" MATCHES ${PLATFORM_LIB_PATTERN})
+					if (installStaticLibs)
+						install(FILES "${VCPKG_INSTALLED_DIR}/${PACKAGE_ENTRY}" DESTINATION ${CMAKE_INSTALL_LIBDIR})
+					endif()
+				elseif (installPublicHeaders
+					AND "${PACKAGE_ENTRY}" MATCHES ${PACKAGE_INCLUDE_PATTERN}
+					AND (NOT PACKAGE_ENTRY STREQUAL "${VCPKG_TRIPLET}/include/")
+					# include subdirs appear in hierarchical order in the list files, eg. "x64-windows-unreal-release/include/absl/"
+					# then "x64-windows-unreal-release/include/absl/algorithm/", etc.
+					AND (NOT lastWholeIncludeDirInstalled
+						OR NOT "${VCPKG_INSTALLED_DIR}/${PACKAGE_ENTRY}" MATCHES "^${lastWholeIncludeDirInstalled}"
+					)
+				)
+					set(fullPath "${VCPKG_INSTALLED_DIR}/${PACKAGE_ENTRY}")
+					if (IS_DIRECTORY "${fullPath}")
+						# Remove trailing slash
+						string(REGEX REPLACE "/$" "" fullPath "${fullPath}")
+						# Install whole include subdir, to avoid cluttering the cmake_install file.
+						# Note: this means files in the subdir which may not appear in the list file will still be installed
+						install(DIRECTORY "${fullPath}" TYPE INCLUDE)
+						# Need to escape '+' (and '.'?) signs which can appear in paths (eg. in async++) but will produce
+						# this error when put in a regex: << RegularExpression::compile(): Nested *?+. >>
+						# (Not sure whether the dot is part of the character list or just terminating the sentence...)
+						string(REPLACE "+" "\\+" lastWholeIncludeDirInstalled "${fullPath}")
+					else()
+						# Install single header from the 'include' root
+						install(FILES "${fullPath}" TYPE INCLUDE)
+					endif()
+				endif()
+			endforeach()
+		elseif (installStaticLibs OR installPublicHeaders)
+			message(FATAL_ERROR "Found no list file for package ${PACKAGE}!")
         endif()
     endforeach()
-endif()
-
-if (CESIUM_INSTALL_STATIC_LIBS AND (NOT VCPKG_MANIFEST_MODE OR CESIUM_INSTALL_EXTERNALLY_BUILT_DEPENDENCIES))
-    foreach(PACKAGE ${PACKAGES_PRIVATE})
-        string(REGEX REPLACE "\\[.*\\]" "" PACKAGE "${PACKAGE}")
-        set(PACKAGE_DIR "${PACKAGE_BASE_DIR}/${PACKAGE}_${VCPKG_TRIPLET}")
-        message(DEBUG "PACKAGE_DIR ${PACKAGE_DIR}")
-        if (NOT PACKAGE IN_LIST CESIUM_EXCLUDE_INSTALL_STATIC_LIBS AND EXISTS ${PACKAGE_DIR}/lib)
-            install(
-                DIRECTORY $<IF:$<CONFIG:Debug>,${PACKAGE_DIR}/debug/lib/,${PACKAGE_DIR}/lib/>
-                DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            )
-        endif()
-    endforeach()
+else()
+	message(FATAL_ERROR "Support for CESIUM_INSTALL_EXTERNALLY_BUILT_DEPENDENCIES=OFF removed in AdvViz fork because installing from vcpkg 'packages' directory is not compatible with vcpkg binary caching!")
 endif()
 
 if(NOT DEFINED CMAKE_C_COMPILER_LAUNCHER AND NOT DEFINED CMAKE_CXX_COMPILER_LAUNCHER)
