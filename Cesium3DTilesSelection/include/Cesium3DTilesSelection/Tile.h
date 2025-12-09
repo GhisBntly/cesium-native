@@ -26,6 +26,7 @@
 
 namespace Cesium3DTilesSelection {
 class TilesetContentLoader;
+class GltfModifier;
 
 #ifdef CESIUM_DEBUG_TILE_UNLOADING
 class TileReferenceCountTracker {
@@ -507,10 +508,8 @@ public:
 
   /**
    * @brief Determines if this tile is currently renderable.
-   * @param modelVersion Optionally, a model version required to allow this
-   * tile to render. See CesiumGltf::Model::version.
    */
-  bool isRenderable(std::optional<int> modelVersion) const noexcept;
+  bool isRenderable() const noexcept;
 
   /**
    * @brief Set by the render engine to notify when a tile needs post-load
@@ -551,22 +550,24 @@ public:
   /**
    * @brief Determines if this tile requires worker-thread loading.
    *
-   * @param modelVersion Optional version of the glTF model that this tile
-   * should check to determine whether it is up to date. See {@link TilesetExternals::gltfModifier}.
+   * @param pModifier The optional glTF modifier. If not `nullptr`, this method
+   * will return true if the tile needs worker thread glTF modification. See
+   * {@link TilesetExternals::pGltfModifier}.
    * @return true if this Tile needs further work done in a worker thread to
    * load it; otherwise, false.
    */
-  bool needsWorkerThreadLoading(std::optional<int> modelVersion) const noexcept;
+  bool needsWorkerThreadLoading(const GltfModifier* pModifier) const noexcept;
 
   /**
    * @brief Determines if this tile requires main-thread loading.
    *
-   * @param modelVersion Optional version of the glTF model that this tile
-   * should check to determine whether it is up to date. See {@link TilesetExternals::gltfModifier}.
+   * @param pModifier The optional glTF modifier. If not `nullptr`, this method
+   * will return true if the tile needs worker thread glTF modification. See
+   * {@link TilesetExternals::pGltfModifier}.
    * @return true if this Tile needs further work done in the main thread to
    * load it; otherwise, false.
    */
-  bool needsMainThreadLoading(std::optional<int> modelVersion) const noexcept;
+  bool needsMainThreadLoading(const GltfModifier* pModifier) const noexcept;
 
   /**
    * @brief Adds a reference to this tile. A live reference will keep this tile
