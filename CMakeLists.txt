@@ -140,6 +140,11 @@ project(cesium-native
     VERSION 0.52.0
     LANGUAGES CXX C
 )
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.31)
+	# AdvViz: suppress many warnings about 'install()' paths in cesium-native, see comment about it in cesium-unreal/extern's CMakeLists
+	# Apparently need to repeat it after each "project(..)" call.
+	cmake_policy(SET CMP0177 OLD)
+endif()
 
 include(GNUInstallDirs)
 include(CMakeDependentOption)
