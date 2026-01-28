@@ -4,6 +4,8 @@ vcpkg_from_github(
     REF "v${VERSION}"
     SHA512 9986aa911b5bd52d5aabe465578a0bd3906fb07b846bace3ebd0c72bd3d021a71abd307c3089674833dc695e87ec4cd136ee67881a38939bc5f42d731253234b
     HEAD_REF master
+    PATCHES
+        ADVVIZ-0001-upgrade-stb-headers-for-CVEs.patch
 )
 file(REMOVE "${SOURCE_PATH}/other_include/zstd_errors.h")
 file(REMOVE_RECURSE "${SOURCE_PATH}/external/basisu/zstd")
