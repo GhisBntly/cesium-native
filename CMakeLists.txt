@@ -127,7 +127,7 @@ set(PACKAGES_PUBLIC ${CESIUM_PACKAGES_PUBLIC} asyncplusplus expected-lite fmt gl
 set(PACKAGES_PRIVATE ${CESIUM_PACKAGES_PRIVATE}
     abseil draco ktx[core] modp-base64 meshoptimizer openssl s2geometry
     sqlite3 tinyxml2 libwebp zlib-ng picosha2
-    earcut-hpp libmorton zstd
+    earcut-hpp libmorton zstd spz zlib
 )
 
 # asmjit needed by blend2d on non-iOS platforms (iOS and Wasm don't support JIT)
@@ -139,7 +139,7 @@ else()
 endif()
 
 if(NOT CESIUM_DISABLE_CURL)
-    list(APPEND PACKAGES_PRIVATE curl zlib)
+    list(APPEND PACKAGES_PRIVATE curl)
 endif()
 
 if(NOT CESIUM_DISABLE_LIBJPEG_TURBO)
@@ -193,7 +193,7 @@ endif()
 include("cmake/defaults.cmake")
 
 project(cesium-native
-    VERSION 0.55.0
+    VERSION 0.56.0
     LANGUAGES CXX C
 )
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.31)
@@ -418,6 +418,7 @@ find_package(meshoptimizer CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(s2 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(spz CONFIG REQUIRED)
 find_package(tinyxml2 CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(WebP CONFIG REQUIRED)

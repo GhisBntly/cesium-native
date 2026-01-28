@@ -52,8 +52,9 @@ CreditSystem::~CreditSystem() noexcept {
 Credit CreditSystem::createCredit(
     const CreditSource& source,
     const std::string& html,
-    bool showOnScreen) {
-  return this->createCredit(source, std::string(html), showOnScreen);
+    bool showOnScreen,
+    int32_t priority) {
+  return this->createCredit(source, std::string(html), showOnScreen, priority);
 }
 
 Credit CreditSystem::createCredit(
@@ -119,15 +120,26 @@ Credit CreditSystem::createCredit(
   return Credit(uint32_t(creditIndex), record.generation);
 }
 
-Credit CreditSystem::createCredit(std::string&& html, bool showOnScreen) {
+Credit CreditSystem::createCredit(
+    std::string&& html,
+    bool showOnScreen,
+    int32_t priority) {
   return this->createCredit(
       this->getDefaultCreditSource(),
       std::move(html),
-      showOnScreen);
+      showOnScreen,
+      priority);
 }
 
-Credit CreditSystem::createCredit(const std::string& html, bool showOnScreen) {
-  return this->createCredit(this->getDefaultCreditSource(), html, showOnScreen);
+Credit CreditSystem::createCredit(
+    const std::string& html,
+    bool showOnScreen,
+    int32_t priority) {
+  return this->createCredit(
+      this->getDefaultCreditSource(),
+      html,
+      showOnScreen,
+      priority);
 }
 
 bool CreditSystem::shouldBeShownOnScreen(Credit credit) const noexcept {

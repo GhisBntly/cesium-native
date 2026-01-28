@@ -178,13 +178,15 @@ public:
   Credit createCredit(
       const CreditSource& source,
       std::string&& html,
-      bool showOnScreen = false);
+      bool showOnScreen = false,
+      int32_t priority = -1);
 
   /** @copydoc createCredit */
   Credit createCredit(
       const CreditSource& source,
       const std::string& html,
-      bool showOnScreen = false);
+      bool showOnScreen = false,
+      int32_t priority = -1);
 
   /**
    * @brief Inserts a credit string associated with the @ref
@@ -288,6 +290,7 @@ private:
     const CreditSource* pSource{nullptr};
     uint32_t previousCreditWithSameHtml{INVALID_CREDIT_INDEX};
     uint32_t nextCreditWithSameHtml{INVALID_CREDIT_INDEX};
+    int32_t priority = -1;
   };
 
   void addBulkReferences(
@@ -309,7 +312,6 @@ private:
 
   static const uint32_t INVALID_CREDIT_INDEX{
       std::numeric_limits<uint32_t>::max()};
-    int32_t priority = -1;
 
   std::vector<CreditSource*> _creditSources;
   std::vector<CreditRecord> _credits;
