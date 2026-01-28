@@ -1,8 +1,9 @@
 function(configure_cesium_library targetName)
 
     if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.31)
-        # AdvViz: suppress many warnings about 'install()' paths in cesium-native, not our concern (hopefully),
-        # so reduce output flooding. Placing it directly in this function was the only way to make it work!
+        # AdvViz: suppress many warnings about 'install()' paths in cesium-native, see comment about it
+        # in cesium-unreal/extern's CMakeLists. Had to repeat it in this function even if it's already set earlier
+        # and in particular already repeated after each "project(..)" call AFAIK...
         cmake_policy(SET CMP0177 OLD)
     endif()
 
