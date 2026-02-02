@@ -140,6 +140,25 @@ void unloadTileRecursively(
   tilesetContentManager.unloadTileContent(tile);
 }
 
+template <class TPredicate>
+void unloadTileByPredicateRecursively(
+    Tile& tile,
+    TilesetContentManager& tilesetContentManager,
+    TPredicate const& pred) {
+  const bool unloadTile = pred(tile);
+  for (Tile& child : tile.getChildren()) {
+    if (unloadTile) {
+      // If the tile itself is to be unloaded, unload all its children.
+      unloadTileRecursively(child, tilesetContentManager);
+    } else {
+      unloadTileByPredicateRecursively(child, tilesetContentManager, pred);
+    }
+  }
+  if (unloadTile) {
+    tilesetContentManager.unloadTileContent(tile);
+  }
+}
+
 std::optional<RegionAndCenter>
 getTileBoundingRegionForUpsampling(const Tile& parent) {
   // To create subdivided children, we need to know a bounding region for each.
@@ -660,6 +679,23 @@ postProcessContentInWorkerThread(
         }
       });
 }
+
+inline std::optional<int> getTileModelVersion(Tile const& tile) {
+  auto const* renderContent = tile.getContent().getRenderContent();
+  if (renderContent) {
+    return renderContent->getModel().version;
+  } else {
+    return std::nullopt;
+  }
+}
+
+inline bool isSmallerVersion(std::optional<int> const& v1, std::optional<int> const& v2) {
+  if (v1 && v2) {
+    return *v1 < *v2;
+  } else {
+    return v2.has_value();
+  }
+}
 } // namespace
 
 TilesetContentManager::TilesetContentManager(
@@ -1012,6 +1048,19 @@ void TilesetContentManager::loadTileContent(
       glm::dvec4 rootTranslation = glm::dvec4(0., 0., 0., 1.);
       if (this->_pRootTile)
         rootTranslation = glm::column(this->_pRootTile->getTransform(), 3);
+
+      // Ensure raster overlays will be recomputed for this tile
+      renderContent->setRasterOverlayDetails({});
+      std::vector<CesiumGeospatial::Projection> projections =
+          this->_overlayCollection.addTileOverlays(tile, tilesetOptions);
+      TileContentLoadInfo tileLoadInfo{
+          this->_externals.asyncSystem,
+          this->_externals.pAssetAccessor,
+          this->_externals.pPrepareRendererResources,
+          this->_externals.pLogger,
+          this->_pSharedAssetSystem,
+          tilesetOptions.contentOptions,
+          tile};
       _externals.asyncSystem
           .runInWorkerThread([gltfModifier = _externals.gltfModifier,
                               pPrepareRendererResources =
@@ -1019,10 +1068,15 @@ void TilesetContentManager::loadTileContent(
                               asyncSystem = _externals.asyncSystem,
                               &tile,
                               rendererOptions = tilesetOptions.rendererOptions,
-                              rootTranslation] {
+                              tileLoadInfo = std::move(tileLoadInfo),
+                              ellipsoid = tilesetOptions.ellipsoid,
+                              projections = std::move(projections),
+                              rootTranslation]() mutable {
             // already known as being non-null
             auto* renderContent = tile.getContent().getRenderContent();
             auto& initialModel = renderContent->getModel();
+            auto const rasterOverlayDetails =
+                renderContent->getRasterOverlayDetails();
             CesiumGltf::Model modifiedModel;
             bool const wasModified = gltfModifier->apply(
                 initialModel,
@@ -1041,7 +1095,17 @@ void TilesetContentManager::loadTileContent(
             }(wasModified ? modifiedModel : initialModel);
             tileLoadResult.contentKind =
                 std::move(wasModified ? modifiedModel : initialModel);
+            tileLoadResult.ellipsoid = ellipsoid;
             tileLoadResult.state = TileLoadResultState::Success;
+
+            postProcessGltfInWorkerThread(
+                tileLoadResult,
+                std::move(projections),
+                tileLoadInfo);
+            if (tileLoadResult.rasterOverlayDetails) {
+              renderContent->setRasterOverlayDetails(
+                  *tileLoadResult.rasterOverlayDetails);
+            }
             return pPrepareRendererResources->prepareInLoadThread(
                 asyncSystem,
                 std::move(tileLoadResult),
@@ -1539,6 +1603,19 @@ void TilesetContentManager::finishLoading(
         _externals.pPrepareRendererResources->prepareInMainThread(
             tile,
             pRenderContent->getRenderResources()));
+    // Invalidate up-sampled children if needed
+    auto const tileModelVersion = getTileModelVersion(tile);
+    for (Tile& child : tile.getChildren()) {
+      unloadTileByPredicateRecursively(
+          child,
+          *this,
+          [&tileModelVersion](Tile const& childTile) {
+            return childTile.getState() == TileLoadState::Done &&
+                   isSmallerVersion(
+                       getTileModelVersion(childTile),
+                       tileModelVersion);
+          });
+    }
     return;
   }
   CESIUM_ASSERT(tile.getState() == TileLoadState::ContentLoaded);

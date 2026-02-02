@@ -545,6 +545,7 @@ RasterOverlayUtilities::upsampleGltfForRasterOverlays(
   result.extensionsRequired = parentModel.extensionsRequired;
   result.asset = parentModel.asset;
   result.extras = parentModel.extras;
+  result.version = parentModel.version;
 
   // TODO: check if this is enough, not enough, or overkill
   result.extensions = parentModel.extensions;

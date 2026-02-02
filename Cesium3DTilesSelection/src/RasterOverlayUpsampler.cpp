@@ -58,9 +58,19 @@ RasterOverlayUpsampler::loadTileContent(const TileLoadInput& loadInput) {
         TileLoadResult::createFailedResult(loadInput.pAssetAccessor, nullptr));
   }
 
+  if (pParentRenderContent->getGltfModifierState() ==
+      GltfModifier::State::WorkerRunning) {
+    // Parent is currently being modified, so it would be useless to upsample
+    // the version about to be replaced - also, its rasterOverlayProjections
+    // may have been emptied in order to be recomputed as well.
+    return loadInput.asyncSystem.createResolvedFuture(
+        TileLoadResult::createFailedResult(loadInput.pAssetAccessor, nullptr));
+  }
+
   size_t index = 0;
   const std::vector<CesiumGeospatial::Projection>& parentProjections =
       pParentRenderContent->getRasterOverlayDetails().rasterOverlayProjections;
+  CESIUM_ASSERT(!parentProjections.empty());
   for (const RasterMappedTo3DTile& mapped : pParent->getMappedRasterTiles()) {
     if (mapped.isMoreDetailAvailable()) {
       const CesiumGeospatial::Projection& projection =
