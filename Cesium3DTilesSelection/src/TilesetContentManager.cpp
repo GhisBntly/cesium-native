@@ -1589,6 +1589,16 @@ void TilesetContentManager::finishLoading(
     if (discardOutdatedRenderResources(tile, *pRenderContent)) {
       return;
     }
+    std::unique_lock<std::shared_mutex> wlock(
+        pRenderContent->getModelMutex(),
+        std::defer_lock);
+    if (!wlock.try_lock()) {
+      // If this tile is currently being upsamplied in a worker thread, we
+      // cannot replace its model. Return so that we do not block the main
+      // thread (finishLoading will be called again later).
+      return;
+    }
+
     pRenderContent->setGltfModifierState(GltfModifier::State::Idle);
     // free outdated render resources before replacing them
     _externals.pPrepareRendererResources->free(

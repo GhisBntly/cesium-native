@@ -10,6 +10,7 @@
 #include <CesiumUtility/ExtensibleObject.h>
 
 #include <memory>
+#include <shared_mutex>
 #include <variant>
 #include <vector>
 
@@ -225,6 +226,10 @@ public:
    * stage's temporary variables, which are reset to their initial state. */
   void replaceWithModifiedModel() noexcept;
 
+  /** Returns the mutex used to synchronize model modifier operations with other
+   * tasks done by worker thread (such as upsampling). */
+  std::shared_mutex& getModelMutex() const noexcept;
+
 private:
   CesiumGltf::Model _model;
   void* _pRenderResources;
@@ -238,6 +243,10 @@ private:
    * content already has render resources. When modifier is done, it will
    * replace _pRenderResources and be reset to nullptr. */
   void* _pModifiedRenderResources = nullptr;
+  /** replaceWithModifiedModel is called by the main thread, while a worker
+   * thread can be upsampling the same tile - this shared mutex is used to
+   * ensure both operations are mutually exclusive. */
+  mutable std::shared_mutex _modelMutex;
 
   CesiumRasterOverlays::RasterOverlayDetails _rasterOverlayDetails;
   std::vector<CesiumUtility::Credit> _credits;

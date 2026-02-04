@@ -91,11 +91,23 @@ RasterOverlayUpsampler::loadTileContent(const TileLoadInput& loadInput) {
   const CesiumGltf::Model& parentModel = pParentRenderContent->getModel();
   return loadInput.asyncSystem.runInWorkerThread(
       [&parentModel,
+       pParentRenderContent,
        ellipsoid,
        transform = loadInput.tile.getTransform(),
        textureCoordinateIndex = index,
        tileID = *pTileID,
        pAssetAccessor = loadInput.pAssetAccessor]() mutable {
+        // Read-lock the parent model so that it is not replaced during the
+        // upsampling!
+        std::shared_lock<std::shared_mutex> rlock(
+            pParentRenderContent->getModelMutex());
+
+        if (pParentRenderContent->getGltfModifierState() ==
+            GltfModifier::State::WorkerRunning) {
+          // Parent tile is being modified, no need to spend time upsampling an
+          // obsolete version.
+          return TileLoadResult::createFailedResult(pAssetAccessor, nullptr);
+        }
         auto model = RasterOverlayUtilities::upsampleGltfForRasterOverlays(
             parentModel,
             tileID,
