@@ -547,6 +547,7 @@ RasterOverlayUtilities::upsampleGltfForRasterOverlays(
   result.extras = parentModel.extras;
 
   // TODO: check if this is enough, not enough, or overkill
+  // (Note: the glTF Modifier version is is there and it's important we copy it)
   result.extensions = parentModel.extensions;
   // result.extras_json_string = parentModel.extras_json_string;
   // result.extensions_json_string = parentModel.extensions_json_string;

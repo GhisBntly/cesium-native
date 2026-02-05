@@ -143,6 +143,25 @@ void unloadTileRecursively(
   tilesetContentManager.unloadTileContent(tile);
 }
 
+template <class TPredicate>
+void unloadTileByPredicateRecursively(
+    Tile& tile,
+    TilesetContentManager& tilesetContentManager,
+    TPredicate const& pred) {
+  const bool unloadTile = pred(tile);
+  for (Tile& child : tile.getChildren()) {
+    if (unloadTile) {
+      // If the tile itself is to be unloaded, unload all its children.
+      unloadTileRecursively(child, tilesetContentManager);
+    } else {
+      unloadTileByPredicateRecursively(child, tilesetContentManager, pred);
+    }
+  }
+  if (unloadTile) {
+    tilesetContentManager.unloadTileContent(tile);
+  }
+}
+
 std::optional<RegionAndCenter>
 getTileBoundingRegionForUpsampling(const Tile& parent) {
   // To create subdivided children, we need to know a bounding region for each.
@@ -649,6 +668,25 @@ std::optional<Credit> createUserCredit(
       tilesetOptions.creditPriority.value_or(-1));
 }
 
+inline std::optional<int64_t> getTileModelVersion(Tile const& tile) {
+  auto const* renderContent = tile.getContent().getRenderContent();
+  if (renderContent) {
+    return GltfModifierVersionExtension::getVersion(renderContent->getModel());
+  } else {
+    return std::nullopt;
+  }
+}
+
+inline bool isSmallerVersion(
+    std::optional<int64_t> const& v1,
+    std::optional<int64_t> const& v2) {
+  if (v1 && v2) {
+    return *v1 < *v2;
+  } else {
+    return v2.has_value();
+  }
+}
+
 } // namespace
 
 TilesetContentManager::TilesetContentManager(
@@ -988,6 +1026,19 @@ void TilesetContentManager::reapplyGltfModifier(
   CESIUM_ASSERT(externals.pGltfModifier->getCurrentVersion());
   int64_t version = externals.pGltfModifier->getCurrentVersion().value_or(-1);
 
+  // Ensure raster overlays will be recomputed for this tile
+  pRenderContent->setRasterOverlayDetails({});
+  std::vector<CesiumGeospatial::Projection> projections =
+      this->_overlayCollection.addTileOverlays(tile, tilesetOptions);
+  TileContentLoadInfo tileLoadInfo{
+      this->_externals.asyncSystem,
+      this->_externals.pAssetAccessor,
+      this->_externals.pPrepareRendererResources,
+      this->_externals.pLogger,
+      this->_pSharedAssetSystem,
+      tilesetOptions.contentOptions,
+      tile};
+
   // It is safe to capture the TilesetExternals and Model by reference because
   // the TilesetContentManager guarantees both will continue to exist and are
   // immutable while modification is in progress.
@@ -1019,13 +1070,15 @@ void TilesetContentManager::reapplyGltfModifier(
                            tileBoundingVolume = tile.getBoundingVolume(),
                            tileContentBoundingVolume =
                                tile.getContentBoundingVolume(),
-                           rendererOptions = tilesetOptions.rendererOptions](
-                              std::optional<GltfModifierOutput>&& modified) {
+                           rendererOptions = tilesetOptions.rendererOptions,
+                           tileLoadInfo = std::move(tileLoadInfo),
+                           ellipsoid = tilesetOptions.ellipsoid,
+                           projections = std::move(projections)](
+                              std::optional<GltfModifierOutput>&&
+                                  modified) mutable {
         TileLoadResult tileLoadResult;
         tileLoadResult.state = TileLoadResultState::Success;
         tileLoadResult.pAssetAccessor = externals.pAssetAccessor;
-        tileLoadResult.rasterOverlayDetails =
-            pRenderContent->getRasterOverlayDetails();
         tileLoadResult.initialBoundingVolume = tileBoundingVolume;
         tileLoadResult.initialContentBoundingVolume = tileContentBoundingVolume;
 
@@ -1039,10 +1092,20 @@ void TilesetContentManager::reapplyGltfModifier(
           }
         }
 
+        tileLoadResult.ellipsoid = ellipsoid;
         if (modified) {
           tileLoadResult.contentKind = std::move(modified->modifiedModel);
         } else {
           tileLoadResult.contentKind = previousModel;
+        }
+
+        postProcessGltfInWorkerThread(
+            tileLoadResult,
+            std::move(projections),
+            tileLoadInfo);
+        if (tileLoadResult.rasterOverlayDetails) {
+          pRenderContent->setRasterOverlayDetails(
+              *tileLoadResult.rasterOverlayDetails);
         }
 
         if (modified && externals.pPrepareRendererResources) {
@@ -1598,6 +1661,17 @@ void TilesetContentManager::finishLoading(
 
   if (this->_externals.pGltfModifier &&
       this->_externals.pGltfModifier->needsMainThreadModification(tile)) {
+
+    std::unique_lock<std::shared_mutex> wlock(
+        pRenderContent->getModelMutex(),
+        std::defer_lock);
+    if (!wlock.try_lock()) {
+      // If this tile is currently being upsamplied in a worker thread, we
+      // cannot replace its model. Return so that we do not block the main
+      // thread (finishLoading will be called again later).
+      return;
+    }
+
     // Free outdated render resources before replacing them.
     if (this->_externals.pPrepareRendererResources) {
       this->_externals.pPrepareRendererResources->free(
@@ -1618,6 +1692,19 @@ void TilesetContentManager::finishLoading(
               pRenderContent->getRenderResources()));
     } else {
       pRenderContent->setRenderResources(nullptr);
+    }
+    // Invalidate up-sampled children if needed
+    auto const tileModelVersion = getTileModelVersion(tile);
+    for (Tile& child : tile.getChildren()) {
+      unloadTileByPredicateRecursively(
+          child,
+          *this,
+          [&tileModelVersion](Tile const& childTile) {
+            return childTile.getState() == TileLoadState::Done &&
+                   isSmallerVersion(
+                       getTileModelVersion(childTile),
+                       tileModelVersion);
+          });
     }
 
     pRenderContent->setGltfModifierState(GltfModifierState::Idle);
