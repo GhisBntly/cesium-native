@@ -64,7 +64,9 @@ RasterOverlayUpsampler::loadTileContent(const TileLoadInput& loadInput) {
     // the version about to be replaced - also, its rasterOverlayProjections
     // may have been emptied in order to be recomputed as well.
     return loadInput.asyncSystem.createResolvedFuture(
-        TileLoadResult::createFailedResult(loadInput.pAssetAccessor, nullptr));
+        TileLoadResult::createRetryLaterResult(
+            loadInput.pAssetAccessor,
+            nullptr));
   }
 
   size_t index = 0;
@@ -106,7 +108,9 @@ RasterOverlayUpsampler::loadTileContent(const TileLoadInput& loadInput) {
             GltfModifierState::WorkerRunning) {
           // Parent tile is being modified, no need to spend time upsampling an
           // obsolete version.
-          return TileLoadResult::createFailedResult(pAssetAccessor, nullptr);
+          return TileLoadResult::createRetryLaterResult(
+              pAssetAccessor,
+              nullptr);
         }
         auto model = RasterOverlayUtilities::upsampleGltfForRasterOverlays(
             parentModel,
