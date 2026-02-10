@@ -586,15 +586,21 @@ postProcessContentInWorkerThread(
 
   std::optional<int64_t> version =
       pGltfModifier ? pGltfModifier->getCurrentVersion() : std::nullopt;
+  const bool needsApplyGltfModifier = (pGltfModifier && version);
 
   auto asyncSystem = tileLoadInfo.asyncSystem;
 
   result.initialBoundingVolume = tileLoadInfo.tileBoundingVolume;
   result.initialContentBoundingVolume = tileLoadInfo.tileContentBoundingVolume;
 
-  postProcessGltfInWorkerThread(result, std::move(projections), tileLoadInfo);
+  // Important: post-process must be performed *after* GltfModifier, as it does
+  // add attribute _CESIUMOVERLAY_xxx, which is required for raster overlays.
+  if (!needsApplyGltfModifier) {
+    postProcessGltfInWorkerThread(result, std::move(projections), tileLoadInfo);
+  }
 
-  auto applyGltfModifier = [&]() {
+  auto applyGltfModifier = [&](std::vector<CesiumGeospatial::Projection>&&
+                                   projections) {
     // Apply the glTF modifier right away, otherwise it will be
     // triggered immediately after the renderer-side resources
     // have been created, which is both inefficient and a cause
@@ -612,7 +618,10 @@ postProcessContentInWorkerThread(
             .tileTransform = tileLoadInfo.tileTransform})
         .thenInWorkerThread(
             [result = std::move(result),
-             version](std::optional<GltfModifierOutput>&& modified) mutable {
+             version,
+             projections = std::move(projections),
+             tileLoadInfo = std::move(tileLoadInfo)](
+                std::optional<GltfModifierOutput>&& modified) mutable {
               if (modified) {
                 result.contentKind = std::move(modified->modifiedModel);
               }
@@ -623,14 +632,22 @@ postProcessContentInWorkerThread(
                 GltfModifierVersionExtension::setVersion(*pModel, *version);
               }
 
-              return result;
-            })
-        .thenPassThrough(std::move(tileLoadInfo));
+              // Important: post-process must be performed *after* the model
+              // is modified.
+              postProcessGltfInWorkerThread(
+                  result,
+                  std::move(projections),
+                  tileLoadInfo);
+
+              return std::make_tuple(
+                  std::move(tileLoadInfo),
+                  std::move(result));
+            });
   };
 
   CesiumAsync::Future<std::tuple<TileContentLoadInfo, TileLoadResult>> future =
-      pGltfModifier && version
-          ? applyGltfModifier()
+      needsApplyGltfModifier
+          ? applyGltfModifier(std::move(projections))
           : tileLoadInfo.asyncSystem.createResolvedFuture(std::move(result))
                 .thenPassThrough(std::move(tileLoadInfo));
 
