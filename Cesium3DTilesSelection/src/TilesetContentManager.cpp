@@ -143,25 +143,6 @@ void unloadTileRecursively(
   tilesetContentManager.unloadTileContent(tile);
 }
 
-template <class TPredicate>
-void unloadTileByPredicateRecursively(
-    Tile& tile,
-    TilesetContentManager& tilesetContentManager,
-    TPredicate const& pred) {
-  const bool unloadTile = pred(tile);
-  for (Tile& child : tile.getChildren()) {
-    if (unloadTile) {
-      // If the tile itself is to be unloaded, unload all its children.
-      unloadTileRecursively(child, tilesetContentManager);
-    } else {
-      unloadTileByPredicateRecursively(child, tilesetContentManager, pred);
-    }
-  }
-  if (unloadTile) {
-    tilesetContentManager.unloadTileContent(tile);
-  }
-}
-
 std::optional<RegionAndCenter>
 getTileBoundingRegionForUpsampling(const Tile& parent) {
   // To create subdivided children, we need to know a bounding region for each.
