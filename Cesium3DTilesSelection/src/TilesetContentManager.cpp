@@ -1132,17 +1132,21 @@ void TilesetContentManager::reapplyGltfModifier(
         tileLoadResult.ellipsoid = ellipsoid;
         if (modified) {
           tileLoadResult.contentKind = std::move(modified->modifiedModel);
-        } else {
-          tileLoadResult.contentKind = previousModel;
-        }
 
-        postProcessGltfInWorkerThread(
-            tileLoadResult,
-            std::move(projections),
-            tileLoadInfo);
-        if (tileLoadResult.rasterOverlayDetails) {
-          pRenderContent->setRasterOverlayDetails(
-              *tileLoadResult.rasterOverlayDetails);
+          // Apply post-process to the modified model.
+          postProcessGltfInWorkerThread(
+              tileLoadResult,
+              std::move(projections),
+              tileLoadInfo);
+          if (tileLoadResult.rasterOverlayDetails) {
+            pRenderContent->setRasterOverlayDetails(
+                *tileLoadResult.rasterOverlayDetails);
+          }
+        } else {
+          // No modification could be reapplied => we'll keep previous model and
+          // render resources.
+          tileLoadResult.contentKind = previousModel;
+          tileLoadResult.state = TileLoadResultState::Failed;
         }
 
         if (modified && externals.pPrepareRendererResources) {
@@ -1208,15 +1212,18 @@ void TilesetContentManager::reapplyGltfModifier(
           pRenderContent->setGltfModifierState(GltfModifierState::WorkerDone);
 
           // The modified model is up-to-date with the version that triggered
-          // this run.
+          // this run (even though the modification did nothing or failed, as it
+          // can happen for upsampling typically).
           CesiumGltf::Model& modifiedModel =
               std::get<CesiumGltf::Model>(pair.result.contentKind);
           GltfModifierVersionExtension::setVersion(modifiedModel, version);
 
-          pRenderContent->setModifiedModelAndRenderResources(
-              std::move(modifiedModel),
-              pair.pRenderResources);
-          this->_externals.pGltfModifier->onWorkerThreadApplyComplete(*pTile);
+          if (pair.result.state == TileLoadResultState::Success) {
+            pRenderContent->setModifiedModelAndRenderResources(
+                std::move(modifiedModel),
+                pair.pRenderResources);
+            this->_externals.pGltfModifier->onWorkerThreadApplyComplete(*pTile);
+          }
         }
       })
       .catchInMainThread(
