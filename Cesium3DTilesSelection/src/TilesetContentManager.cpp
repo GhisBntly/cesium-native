@@ -1703,7 +1703,7 @@ void TilesetContentManager::finishLoading(
         pRenderContent->getModelMutex(),
         std::defer_lock);
     if (!wlock.try_lock()) {
-      // If this tile is currently being upsamplied in a worker thread, we
+      // If this tile is currently being upsampled in a worker thread, we
       // cannot replace its model. Return so that we do not block the main
       // thread (finishLoading will be called again later).
       return;
