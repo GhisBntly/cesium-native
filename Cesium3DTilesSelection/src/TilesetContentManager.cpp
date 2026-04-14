@@ -979,28 +979,6 @@ TilesetContentManager::~TilesetContentManager() noexcept {
   this->_destructionCompletePromise.resolve();
 }
 
-namespace
-{
-
-CesiumAsync::Future<std::optional<GltfModifierOutput>> reapplyGltfUpsampling(
-    const TileLoadInput& loadInput,
-    RasterOverlayUpsampler& upsampler) {
-  CESIUM_ASSERT(loadInput.tile.getLoader() == &upsampler);
-  return upsampler.loadTileContent(loadInput).thenImmediately(
-      [](TileLoadResult&& result) {
-        if (result.state == TileLoadResultState::Success &&
-            std::holds_alternative<CesiumGltf::Model>(result.contentKind)) {
-          return std::make_optional<GltfModifierOutput>(
-              std::move(std::get<CesiumGltf::Model>(result.contentKind)));
-        } else {
-          return std::optional<GltfModifierOutput>{};
-        }
-      });
-}
-
-}
-
-
 void TilesetContentManager::reapplyGltfModifier(
     Tile& tile,
     const TilesetOptions& tilesetOptions,
@@ -1066,13 +1044,13 @@ void TilesetContentManager::reapplyGltfModifier(
                           &previousModel,
                           version,
                           tileTransform = tile.getTransform()] {
-          return externals.pGltfModifier->apply(GltfModifierInput{
-              .version = version,
-              .asyncSystem = externals.asyncSystem,
-              .pAssetAccessor = externals.pAssetAccessor,
-              .pLogger = externals.pLogger,
-              .previousModel = previousModel,
-              .tileTransform = tileTransform});
+        return externals.pGltfModifier->apply(GltfModifierInput{
+            .version = version,
+            .asyncSystem = externals.asyncSystem,
+            .pAssetAccessor = externals.pAssetAccessor,
+            .pLogger = externals.pLogger,
+            .previousModel = previousModel,
+            .tileTransform = tileTransform});
       })
       .thenInWorkerThread([&externals,
                            &previousModel,

@@ -93,15 +93,14 @@ RasterOverlayUpsampler::loadTileContent(const TileLoadInput& loadInput) {
   const CesiumGltf::Model& parentModel = pParentRenderContent->getModel();
 
   pParentRenderContent->incrementUpSamplingTaskCount();
-  return loadInput.asyncSystem.runInWorkerThread(
-      [&parentModel,
-       pParentRenderContent,
-       ellipsoid,
-       transform = loadInput.tile.getTransform(),
-       textureCoordinateIndex = index,
-       tileID = *pTileID,
-       pAssetAccessor = loadInput.pAssetAccessor]() mutable {
-
+  return loadInput.asyncSystem
+      .runInWorkerThread([&parentModel,
+                          pParentRenderContent,
+                          ellipsoid,
+                          transform = loadInput.tile.getTransform(),
+                          textureCoordinateIndex = index,
+                          tileID = *pTileID,
+                          pAssetAccessor = loadInput.pAssetAccessor]() mutable {
         if (pParentRenderContent->getGltfModifierState() ==
             GltfModifierState::WorkerRunning) {
           // Parent tile is being modified, no need to spend time upsampling an
@@ -144,12 +143,12 @@ RasterOverlayUpsampler::loadTileContent(const TileLoadInput& loadInput) {
             TileLoadResultState::Success,
             ellipsoid};
       })
-    .thenInMainThread([pParentRenderContent](TileLoadResult&& result) {
-      CESIUM_ASSERT(pParentRenderContent->isBeingUpSampled());
-      pParentRenderContent->decrementUpSamplingTaskCount();
-      return std::move(result);
-    });
-  }
+      .thenInMainThread([pParentRenderContent](TileLoadResult&& result) {
+        CESIUM_ASSERT(pParentRenderContent->isBeingUpSampled());
+        pParentRenderContent->decrementUpSamplingTaskCount();
+        return std::move(result);
+      });
+}
 
 TileChildrenResult RasterOverlayUpsampler::createTileChildren(
     [[maybe_unused]] const Tile& tile,
