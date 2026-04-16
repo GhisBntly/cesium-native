@@ -72,7 +72,14 @@ RasterOverlayUpsampler::loadTileContent(const TileLoadInput& loadInput) {
   size_t index = 0;
   const std::vector<CesiumGeospatial::Projection>& parentProjections =
       pParentRenderContent->getRasterOverlayDetails().rasterOverlayProjections;
-  CESIUM_ASSERT(!parentProjections.empty());
+  if (parentProjections.empty()) {
+    // Parent doesn't have any raster overlay projection, so we don't know how
+    // to upsample it. This does happen when we remove a raster overlay from a
+    // tileset, for example.
+    return loadInput.asyncSystem.createResolvedFuture(
+        TileLoadResult::createFailedResult(loadInput.pAssetAccessor, nullptr));
+  }
+
   for (const RasterMappedTo3DTile& mapped : pParent->getMappedRasterTiles()) {
     if (mapped.isMoreDetailAvailable()) {
       const CesiumGeospatial::Projection& projection =
