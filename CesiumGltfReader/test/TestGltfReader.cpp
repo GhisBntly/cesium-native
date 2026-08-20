@@ -273,7 +273,7 @@ TEST_CASE("Read TriangleWithPaddingInGlbBin") {
   GltfReader reader;
   GltfReaderResult result = reader.readGltf(data);
   REQUIRE(result.model);
-  REQUIRE(result.warnings.size() == 1);
+  REQUIRE(result.warnings.size() == 0/*1*/); // AdvViz: see workaround in same commit, warning is only for 5+ bytes padding now...
 }
 
 TEST_CASE("Read MeshPrimitiveModes") {
